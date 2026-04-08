@@ -2,112 +2,179 @@
 #define GROUND
 
 #include <cinolib/meshes/meshes.h>
-#include <cinolib/merge_meshes_at_coincident_vertices.h>
 
 #include <auxiliary.h>
 #include <triangulate_with_holes.h>
+#include <street.h>
+#include <building.h>
 
-using namespace cinolib;
-
-bool is_footprint_inside(const Polygonmesh<> &footprint,
-                         const Polygonmesh<> &ground,
-                         const uint pid)
+namespace cinolib
 {
-    // check that the footprint is contained within the ground polygon
-    for (vec3d &v : footprint.poly_verts(pid)) {
-        if (!point_in_polygon(ground, v, pid)) {
-            return false;
+
+using std::vector;
+using std::string;
+
+class Ground
+{
+private:
+    Trimesh<>        ground_mesh;
+    vector<vec3d>    holes;
+    Polygonmesh<>    boundary;
+    vector<Building> buildings;
+    vector<Street>   streets;
+    bool             WITH_STREETS;
+    vec3d            scene_center;
+
+    void translate_back();
+    void mark_streets(const Polygonmesh<> &m);
+
+public:
+    Ground()  {}
+    ~Ground() {}
+
+    void setup(const Polygonmesh<>    &boundary_mesh,
+               const vector<Building> &buildings_data,
+               const vector<Street>   &street_data,
+               const vec3d            &center);
+
+    void compute();
+
+    void save(const string &filename);
+
+    Trimesh<> get_ground()            const { return ground_mesh; }
+    const Trimesh<> &get_ground_ref() const { return ground_mesh; }
+    const Trimesh<> *get_ground_ptr() const { return &ground_mesh; }
+};
+
+// --------------------------------------------------------------------------------------------
+
+void Ground::setup(const Polygonmesh<>    &boundary_mesh,
+                   const vector<Building> &buildings_data,
+                   const vector<Street>   &street_data,
+                   const vec3d            &center)
+{
+    boundary     = boundary_mesh;
+    buildings    = buildings_data;
+    streets      = street_data;
+    WITH_STREETS = !streets.empty();
+    scene_center = center;
+}
+
+// --------------------------------------------------------------------------------------------
+
+void Ground::compute()
+{
+    // start from the boundary and translate it the origin
+    Polygonmesh<> m = boundary;
+    std::unordered_map<uint, double> z_map;
+    project_mesh(m, z_map);
+
+    // add footprints to the mesh
+    vector<vec3d> holes;
+    int count = 0;
+    for (Building B : buildings) {
+        std::cout << "Ground::compute_ground_mesh - building " << count << " / "
+                  << buildings.size() << "\r" << std::flush;
+        // project the footprint to the plane z=0
+        std::unordered_map<uint, double> footprint_z_map;
+        B.project_footprint(footprint_z_map);
+        // append footprint_z_map to z_map
+        append_map(B.get_footprint().vector_verts(), footprint_z_map, m.vector_verts(), z_map);
+        // add the footprint to the mesh
+        B.add_footprint_to_mesh(m);
+        // add a point inside the footprint to the holes list
+        // holes.push_back(pick_point_in_polygon(B.get_footprint(), 0));
+        holes.push_back(B.get_point_in_footprint());
+        count++;
+    }
+
+    // add streets to the mesh
+    if (WITH_STREETS) {
+        count = 0;
+        for (Street s : streets) {
+            std::cout << "Ground::compute_ground_mesh - street " << count << " / "
+                      << streets.size() << "\r" << std::flush;
+            // project the street to the plane z=0
+            std::unordered_map<uint, double> street_z_map;
+            s.project(street_z_map);
+            // append street_z_map to z_map
+            append_map({s.get_v0(), s.get_v1()}, street_z_map, m.vector_verts(), z_map);
+            // add the street to the mesh and assign a label to the corresponding edges
+            s.add_to_mesh(m);
+            count++;
         }
     }
-    return true;
-}
+    assert(z_map.size() == m.num_verts());
 
-void add_footprint_to_mesh(const Polygonmesh<> &footprint,
-                           Polygonmesh<> &m,
-                           std::vector<vec3d> &holes)
-{
-    // merge the footprint with the ground
-    merge_meshes_at_coincident_vertices(m, footprint, m);
-
-    // add a point inside the footprint to the holes list
-    vec3d v = pick_point_in_polygon(footprint, 0);
-    holes.push_back(v);
-}
-
-void add_footprint_to_mesh(const Polygonmesh<> &footprint,
-                           Polygonmesh<> &m,
-                           std::vector<uint> &holes)
-{
-    // merge the footprint with the ground
-    merge_meshes_at_coincident_vertices(m, footprint, m);
-
-    // add the footprint ID to the footprints list
-    std::vector<uint> vlist;
-    for (vec3d &v : footprint.poly_verts(0)) {
-        uint vid = m.pick_vert(v);
-        vlist.push_back(vid);
+    // triangulate the mesh with holes
+    ground_mesh = triangulate_with_holes(m, holes);
+    // copy edge labels
+    if (WITH_STREETS) {
+        mark_streets(m);
     }
-    int pid = m.poly_id(vlist);
-    assert(pid >= 0);
-    holes.push_back(pid);
+    if (m.num_verts() != ground_mesh.num_verts()) {
+        std::cout << "  Ground::compute - WARNING: triangulation added "
+                  << ground_mesh.num_verts() - m.num_verts()
+                  << " new vertices in the ground mesh!" << std::endl;
+    }
+    // translate back to the original position
+    project_back_mesh(ground_mesh, z_map);
+    ground_mesh.update_bbox();
+    ground_mesh.mesh_data().filename = m.mesh_data().filename;
 }
 
-Trimesh<> create_ground_mesh(const Polygonmesh<> &boundary,
-                             std::vector<std::string> &buildings_dirs)
+// --------------------------------------------------------------------------------------------
+
+void Ground::translate_back()
 {
-    /*************** BOUNDARY ****************/
+    vec3d c = scene_center - ground_mesh.centroid();
+    ground_mesh.translate(c);
+}
 
-    // translate the ground to the origin
-    Polygonmesh<> ground = boundary;
-    vec3d center = ground.centroid();
-    ground.translate(-center);
+// --------------------------------------------------------------------------------------------
 
-    std::unordered_map<uint, double> z_map;
-    project(ground, z_map);
+void Ground::mark_streets(const Polygonmesh<> &m)
+{
+    if (!WITH_STREETS) return;
 
-    /*************** FOOTPRINTS ****************/
-
-    std::vector<vec3d> holes;
-    for (int i=buildings_dirs.size()-1; i>=0; --i) {
-
-        // load footprint mesh
-        Polygonmesh<> footprint((buildings_dirs.at(i) + "/pavement_polygon.off").c_str());
-        footprint.translate(-center);
-
-        std::unordered_map<uint, double> footprint_z_map;
-        project(footprint, footprint_z_map);
-
-        // check that the footprint is contained within the ground polygon
-        if (!is_footprint_inside(footprint, ground, 0)) {
-            std::cout << "  create_ground_mesh - WARNING: footprint outside the ground polygon, discarded: "
-                      << footprint.mesh_data().filename << std::endl;
-            buildings_dirs.erase(buildings_dirs.begin() + i);
+    // mark the edges corresponding to streets
+    int count = 0;
+    for (uint eid=0; eid<m.num_edges(); ++eid) {
+        auto vids = m.edge_vert_ids(eid);
+        int eid_tri = ground_mesh.edge_id(vids);
+        if (eid_tri == -1) {
+            count++;
             continue;
         }
+        ground_mesh.edge_data(eid_tri).label = m.edge_data(eid).label;
 
-        // append map footprint_z_map to map z_map
-        append_map(footprint.vector_verts(), footprint_z_map, ground.vector_verts(), z_map);
-
-        // add the footprint to the ground mesh
-        add_footprint_to_mesh(footprint, ground, holes);
+        // if the edge corresponds to a street, set the z-coordinate of the vertices
+        // perchè la z delle strade è sbagliata?
+        if (ground_mesh.edge_data(eid_tri).label != -1) {
+            for (uint vid : ground_mesh.edge_vert_ids(eid_tri)) {
+                double avg_z = 0.;
+                for (uint nbr : ground_mesh.adj_v2v(vid)) {
+                    avg_z += ground_mesh.vert(nbr).z();
+                }
+                avg_z /= ground_mesh.adj_v2v(vid).size();
+                ground_mesh.vert(vid).z() = avg_z;
+            }
+        }
     }
-
-    /*************** GROUND ****************/
-
-    // triangulate the ground with the buildings footprints
-    Trimesh<> ground_tri = triangulate_with_holes(ground, holes);
-    if (ground.num_verts() != ground_tri.num_verts()) {
-        std::cout << "  create_ground_mesh - WARNING: " << ground_tri.num_verts() - ground.num_verts()
-                  << " new vertices in triangulated ground mesh!" << std::endl;
+    if (count > 0) {
+        std::cout << "  Ground::mark_streets - WARNING: triangulation modified " << count
+                  << " edges in the ground mesh!" << std::endl;
     }
+}
 
-    // translate the mesh back to the original position
-    project_back(ground_tri, z_map);
-    ground_tri.translate(center);
-    ground_tri.update_bbox();
-    ground_tri.mesh_data().filename = ground.mesh_data().filename;
+// --------------------------------------------------------------------------------------------
 
-    return ground_tri;
+void Ground::save(const string &filename)
+{
+    translate_back();
+    ground_mesh.save(filename.c_str());
+}
+
 }
 
 #endif // GROUND

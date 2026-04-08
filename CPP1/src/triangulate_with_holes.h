@@ -32,6 +32,7 @@ Trimesh<> triangulate_with_holes(const Polygonmesh<> &m, const std::vector<vec3d
     // t_flags += "a" + std::to_string(area_max);  // area constraint
     double z_coord = 0.;
     triangle_wrap(verts_in, edges_in, holes_centers, z_coord, t_flags.c_str(), m_tri);
+    m_tri.mesh_data().filename = m.mesh_data().filename + "_triangulated";
 
     return m_tri;
 }
