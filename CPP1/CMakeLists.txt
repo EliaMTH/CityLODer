@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(city_iconic_mesh LANGUAGES CXX)
+project(triangulate_city LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 ## cinolib
 set(cinolib_DIR ${PROJECT_SOURCE_DIR}/cinolib)
 set(CINOLIB_USES_TRIANGLE ON)
-set(CINOLIB_USES_OPENGL_GLFW_IMGUI ON)
+set(CINOLIB_USES_OPENGL_GLFW_IMGUI OFF)
 find_package(cinolib REQUIRED)
 
 ## general
