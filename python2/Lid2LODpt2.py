@@ -116,7 +116,7 @@ def merge_off_models(models, merged_name="merged_buildings"):
 
     return {
         "id": merged_name,
-        "lod": "1.1",
+        "lod": "1.0",
         "geometry": new_geometry,
         "vertices": unique_vertices
     }
@@ -467,7 +467,7 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
             "type": "Building",
             "geometry": [{
                 "type": "Solid",
-                "lod": b.get("lod", "1.1"),
+                "lod": b.get("lod", "1.0"),
                 "boundaries": [geom_faces],
                 "semantics": {
                     "surfaces": semantic_surfaces,
