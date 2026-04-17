@@ -1,44 +1,63 @@
 #!/bin/bash
 set -e
 
-# Input arguments passed to the container
-INPUT1="$1" # <building_footprints.shp>  
-INPUT2="$2" # <points.las>
-INPUT4="$3" # <output_file_path_and_name> 
+# Required CLI inputs
+INPUT2D_PATH="$1"
+GRAPH_PATH="$2"
+LAS_PATH="$3"
+OUTPUT_FILE_PATH_AND_NAME="$4"
 
-# Internal working folder (hidden from the user)
-WORKING_FOLDER="/working_folder"
+# Optional CLI inputs
+CLASS_BUILDING="${5:-6}"
+CLASS_GROUND="${6:-2}"
+TEMP_FOLD="${7:-/working_folder}"
+GROUND_POLYGON_NAME="${8:-/working_folder/ground_polygon}"
+
+if [ "$#" -lt 4 ]; then
+    echo "Correct usage: /entrypoint.sh <input2D_path> <graph_path> <las_path> <output_file_path_and_name> [class_building] [class_ground] [temp_fold] [ground_polygon_name]"
+    exit 1
+fi
+
+OUTPUT_DIR="$(dirname "$OUTPUT_FILE_PATH_AND_NAME")"
+
+mkdir -p "$TEMP_FOLD"
+mkdir -p "$OUTPUT_DIR"
 
 echo "---------------------------------------"
-echo "Running pt1... "
-echo "---------------------------------------"
-python3 /python1/Lid2LODpt1.py "$INPUT1" "$INPUT2" "$WORKING_FOLDER"
-python3 /python1_1/Lid2LODpt1b.py "$INPUT2" "$WORKING_FOLDER/ground_polygon.off"
-
-echo "---------------------------------------"
-echo "Running pt2..."
+echo "Running core..."
 echo "---------------------------------------"
 
-set +e   # disable exit-on-error for pt2
+python3 /core/cityloder_main.py \
+    "$INPUT2D_PATH" \
+    "$GRAPH_PATH" \
+    "$LAS_PATH" \
+    "$OUTPUT_FILE_PATH_AND_NAME" \
+    "$CLASS_BUILDING" \
+    "$CLASS_GROUND" \
+    "$TEMP_FOLD" \
+    "$GROUND_POLYGON_NAME"
 
-/CPP1/build/triangulate_city \
-    "$WORKING_FOLDER/ground_polygon.off" \
-    "$WORKING_FOLDER" \
-    "$INPUT4"
+echo "---------------------------------------"
+echo "Running mesh_gen..."
+echo "---------------------------------------"
+
+set +e
+
+/mesh_gen/build/city_iconic_mesh \
+    "${GROUND_POLYGON_NAME}.off" \
+    "$TEMP_FOLD" \
+    "$GRAPH_PATH" \
+    "$OUTPUT_FILE_PATH_AND_NAME"
 
 PT2_EXIT_CODE=$?
 
-set -e   # re-enable exit-on-error for the rest of the pipeline
+set -e
 
-if [ $PT2_EXIT_CODE -ne 0 ]; then
-    echo "WARNING: pt2 failed with exit code $PT2_EXIT_CODE. Skipping to pt3..."
+if [ "$PT2_EXIT_CODE" -ne 0 ]; then
+    echo "WARNING: city_iconic_mesh failed with exit code $PT2_EXIT_CODE"
+    exit "$PT2_EXIT_CODE"
 fi
 
 echo "---------------------------------------"
-echo "Running pt3..."
-echo "---------------------------------------"
-python3 /python2/Lid2LODpt2.py "$WORKING_FOLDER" "$INPUT4/city_JSON"
-
-echo "---------------------------------------"
-echo "Pipeline complete!"
+echo "Pipeline completed successfully"
 echo "---------------------------------------"

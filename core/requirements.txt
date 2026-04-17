@@ -1,0 +1,7 @@
+numpy
+scipy
+laspy
+pyshp
+shapely
+matplotlib
+pybind11

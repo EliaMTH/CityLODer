@@ -1,9 +1,36 @@
-import numpy as np
-import os
+import laspy
 from scipy.spatial import KDTree
 from scipy.spatial import ConvexHull
-import laspy
-import argparse
+import numpy as np
+
+# TODO: classification step if no classification is detected
+
+def read_las_file(file_path, class_building = 6, class_ground = 2):
+    """
+    Reads a LAS file and extracts XYZ coordinates and classification.
+
+    Parameters:
+        file_path (str): Path to the .las file.
+
+    Returns:
+        coords (np.ndarray): Nx3 array of XYZ coordinates.
+        classification (np.ndarray): N-length array of classifications.
+    """
+    # Open the LAS file
+    las = laspy.read(file_path)
+
+    
+    # Extract XYZ coordinates as Nx3 array
+    coords = np.vstack((las.x, las.y, las.z)).T
+    
+    # Extract classification
+    classification = np.array(las.classification)
+
+    xyz_ground = coords[classification == class_ground, :].astype(float)
+    xyz_building = coords[classification == class_building, :].astype(float)
+    
+    return xyz_building, xyz_ground, coords
+
 
 def minBoundingBox(X):
     """
@@ -68,58 +95,8 @@ def minBoundingBox(X):
 
     return bb
 
-def read_las_file(file_path):
-    """
-    Reads a LAS file and extracts XYZ coordinates and classification.
 
-    Parameters:
-        file_path (str): Path to the .las file.
-
-    Returns:
-        coords (np.ndarray): Nx3 array of XYZ coordinates.
-        classification (np.ndarray): N-length array of classifications.
-    """
-    # Open the LAS file
-    las = laspy.read(file_path)
-    
-    # Extract XYZ coordinates as Nx3 array
-    coords = np.vstack((las.x, las.y, las.z)).T
-    
-    # Extract classification
-    classification = las.classification
-
-    classification = np.array(las.classification)
-    
-    return coords, classification
-
-
-# --------------------------------------------------
-# ------------------- MAIN ---------------------
-# --------------------------------------------------
-
-def main(las_path,outname):
-    """
-    Processes a LAS file to generate an OFF ground_polygon around the classified points.
-    
-    Steps performed:
-    - Reads point cloud data and separates ground and building points.
-    - Computes a minimal bounding box around the selected classes.
-    - Expands and refines the bounding box into a detailed boundary polyline.
-    - Projects the boundary onto ground elevation via nearest-neighbor search.
-    - Writes the resulting 3D polygon to an OFF file.
-    
-    Parameters:
-        - las_path (str): Path to the input .las file.
-        - outname (str): Output filename for the generated .off boundary.
-    
-    Returns:
-        None (writes output file to disk).
-    """
-    xyz, pt_classification = read_las_file(las_path)
-
-    other = xyz[pt_classification == 2].astype(float)
-    xyz   = xyz[pt_classification == 6].astype(float)
-
+def generate_ground_polygon(xyz,other,outname = "ground_polygon"):
     
     # Compute min bounding box on (other; xyz)
     aus = np.vstack((other, xyz))
@@ -178,23 +155,3 @@ def main(las_path,outname):
         f.write(f"{len(xy)} {indices}\n")
 
     print("Saved boundary polygon:", outpath)
-
-
-
-if __name__ == "__main__":
-
-    parser = argparse.ArgumentParser(description="Compute boundary OFF file from LAS input.")
-    parser.add_argument("las_path", type=str, help="Path to input .las file")
-    parser.add_argument("outname", type=str, help="Output OFF filename")
-    args = parser.parse_args()
-
-    # Validate input file
-    if not os.path.isfile(args.las_path):
-        raise FileNotFoundError(f"Input LAS file not found: {args.las_path}")
-
-    # Ensure output directory exists
-    outdir = os.path.dirname(args.outname)
-    if outdir != "" and not os.path.exists(outdir):
-        os.makedirs(outdir)
-
-    main(args.las_path, args.outname)

@@ -1,41 +1,13 @@
 import os
-import sys
 import numpy as np
 import shapefile
-import laspy
 from matplotlib.path import Path  # for inpolygon equivalent
 from scipy.spatial import cKDTree
+
 
 ## -------------------------------------------------------------------------------
 ## -------------------- Subfunctions (Helper/Utility Functions) ------------------
 ## -------------------------------------------------------------------------------
-
-def read_las_file(file_path):
-    """
-    Reads a LAS file and extracts XYZ coordinates and classification.
-
-    Parameters:
-        file_path (str): Path to the .las file.
-
-    Returns:
-        coords (np.ndarray): Nx3 array of XYZ coordinates.
-        classification (np.ndarray): N-length array of classifications.
-    """
-    # Open the LAS file
-    las = laspy.read(file_path)
-    
-    # Extract XYZ coordinates as Nx3 array
-    coords = np.vstack((las.x, las.y, las.z)).T
-    
-    # Extract classification
-    classification = las.classification
-
-    classification = np.array(las.classification)
-    
-    return coords, classification
-
-
-##
 
 def read_shapefile_to_dict(shapefile_path):
     """
@@ -110,8 +82,8 @@ def PointSelectionAndDataStructure(xyz = None,M_i = None,other = None):
         building (np.ndarray): refined ?x3 array of xyz coordinates of the points shaping the building
     """
     # building and numpy arrays
-    X = np.array(M_i['X'], dtype=float)
-    Y = np.array(M_i['Y'], dtype=float)
+    X = M_i[:,0] 
+    Y = M_i[:,1]
 
 
     # ----
@@ -351,37 +323,11 @@ def exportRoof(points_build_r, lab, dirNames):
 ## ---------------------------------- MAIN -------------------------------
 ## -------------------------------------------------------------------------------
 
-def main(building_footprints,las_path,temp_fold):
-    """
-    Main loop for each building, that export each building of the footprints with 
-    enough descriptive points in the lidar scan in three distinct OFF files, to be 
-    processed in the next Lid2Lod steps. A folder is created for each building. 
+def main(temp_fold, xyz, other, M, final_id, final_check_adj):
 
-    Parameters:
-        - building_footprints (str): path to the .shp file with the building footprints
-        - las_path (str): path to the .las file of the aerial lidar scan
-        - temp_fold (str): path to the output folder/files
-
-    """
-
-    ## Read pointcloud and assign attributes
-
-    xyz, pt_classification = read_las_file(las_path)
-
-    other = xyz[pt_classification == 2, :].astype(float)
-
-    unique_classes = set(pt_classification)
-
-    if unique_classes.issubset({1, 2}): # Addresses different classifications
-        xyz = xyz[pt_classification == 1, :].astype(float)
-    else:
-        xyz = xyz[pt_classification == 6, :].astype(float)
-
-
-    ## Read shapefile
-    M = read_shapefile_to_dict(building_footprints)
     ## Initialize further variables
     zMin_default = np.mean(other[:, 2])
+    points_ground = np.empty((0, 4))
 
     for i in range(0, len(M)):
 
@@ -406,20 +352,52 @@ def main(building_footprints,las_path,temp_fold):
             # Step 1 Organize Data
             lab = DefineLabels(X,i)
 
-            if other_aus.shape[0] > 0:
+
+
+
+            # ----------------- Edit
+            val = final_check_adj[i]
+            if np.isscalar(val) and np.isnan(val):
                 tree = cKDTree(other_aus[:, :2])
                 _, I = tree.query(xy)
-                zMin = np.min(other_aus[I, 2])
+                if other_aus.shape[0] > 0:
+                    z = other_aus[I, 2]
+                else:
+                    z = zMin_default * np.ones((xy.shape[0]))
             else:
-                zMin = zMin_default
-            zMax = np.max(building[:, 2])
+                id_close_building = final_check_adj[i]
+                points = other_aus
+                for j in range(0,len(M)-1):
+                    for ja in range(0,len(id_close_building)):
+                        if np.isin(id_close_building[ja], final_id[j]).sum() > 0:
+                            points = np.vstack([
+                                    points,
+                                    points_ground[points_ground[:, 3] == j, :3]
+                                ])
+                tree = cKDTree(points[:, :2])
+                _, I = tree.query(xy)
+                if points.size != 0:
+                    z = points[I, 2]
+                else:
+                    z = zMin_default * np.ones((xy.shape[0]))
+            # ----------------- 
 
+
+
+
+            zMax = np.max(building[:, 2])
             points_aus_ground = np.zeros((xy.shape[0],6))
 
-            z = np.full((xy.shape[0], 1), zMin)
-            xyz_aus = np.hstack([xy, z])
+            
+            xyz_aus = np.hstack([xy, z[:, np.newaxis]])
             points_aus_ground[:, 0:3] = xyz_aus
             points_aus_ground[:, 4] = i
+            # ----------------- Edit 
+            points_ground = np.vstack([
+                points_ground,
+                np.hstack([xyz_aus, i * np.ones((xyz_aus.shape[0], 1))])
+            ])
+            # -----------------
             
             z = np.full((xy.shape[0], 1), zMax)
             points_aus_roof = np.ones((xy.shape[0], 6))
@@ -442,14 +420,3 @@ def main(building_footprints,las_path,temp_fold):
     
     print("Saved building polygons:", len(M))
 
-if __name__ == "__main__":
-
-    if len(sys.argv) != 4:
-        print("Usage: python Lid2LODpt1.py <building_footprints.shp> <points.las> <temp_output_folder>")
-        exit(1)
-
-    building_footprints = sys.argv[1]
-    las_path = sys.argv[2]
-    temp_fold = sys.argv[3]
-
-    main(building_footprints, las_path, temp_fold)

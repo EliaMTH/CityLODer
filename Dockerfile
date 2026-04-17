@@ -7,47 +7,41 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    python3 python3-pip python3-setuptools \
+    python3 python3-pip python3-setuptools python3-dev \
     build-essential cmake git \
     && rm -rf /var/lib/apt/lists/*
 
 # Create workspace for Python scripts
-RUN mkdir -p /workspace
 WORKDIR /workspace
 
 # ------------------------------------------------------------
-# 2. Install Python dependencies
+# 2. Install core dependencies
 # ------------------------------------------------------------
-COPY python1/ /python1/
-COPY python1_1/ /python1_1/
-COPY python2/ /python2/
+COPY core/ /core/
+RUN pip3 install --no-cache-dir -r /core/requirements.txt
+RUN pip3 install --no-cache-dir pybind11
 
-RUN pip3 install numpy \
-    && pip3 install -r /python1/requirements.txt \
-    && pip3 install -r /python1_1/requirements.txt \
-    && pip3 install -r /python2/requirements.txt
-
-RUN pip3 install numpy
+RUN c++ -O3 -Wall -shared -std=c++17 -fPIC \
+    $(python3 -m pybind11 --includes) \
+    /core/fast_inpolygon.cpp \
+    -o /core/fast_inpolygon$(python3-config --extension-suffix)
 
 # ------------------------------------------------------------
-# 3. Copy the C++ repo (build + cinolib + src)
+# 3. Copy mesh_gen repo (build + cinolib + src) and build
 # ------------------------------------------------------------
-COPY /CPP1 /CPP1
+COPY mesh_gen/ /mesh_gen/
 
-RUN test -d /CPP1/cinolib && \
-    test "$(ls -A /CPP1/cinolib)" || \
-    (echo "ERRORE: /CPP1/cinolib not found or folder is empty!" && exit 1)
+RUN test -d /mesh_gen/cinolib && \
+    test "$(ls -A /mesh_gen/cinolib)" || \
+    (echo "ERROR: /mesh_gen/cinolib not found or folder is empty!" && exit 1)
 
-# ------------------------------------------------------------
-# 4. Build triangulate_city
-# ------------------------------------------------------------
-RUN mkdir -p /CPP1/build \
-    && cd /CPP1/build \
+RUN mkdir -p /mesh_gen/build \
+    && cd /mesh_gen/build \
     && cmake .. -DCMAKE_BUILD_TYPE=Release \
     && make -j4
 
 # ------------------------------------------------------------
-# 5. Entrypoint
+# 4. Entrypoint
 # ------------------------------------------------------------
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
