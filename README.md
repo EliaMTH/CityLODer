@@ -1,51 +1,10 @@
-# Lid2LOD: Generating LOD1 Urban Models from Airborne LiDAR
-
-This repository contains a fully reproducible Docker environment for running **Lid2LOD**, a processing pipeline that generates 3D building models from:
-
-* a **Building footprints** file (`.shp` and eventual shapefile components .shx, .dbf, etc.),
-* a **Point cloud** file (`.las`).
-
----
-
-## Building
-First, you should have docker on your machine. We tested this project using https://www.docker.com/products/docker-desktop/
-
-From the root of the project run the following command:
-
-```bash
-docker build -t lid2lod_v1 .
-```
-
-**Warning**: if you edit `entrypoint.sh` or any shell script on Windows, it may be saved with **CRLF** line endings.
-Linux containers expect **LF** only. Using CRLF causes Docker to fail with errors such as:
-
-```
-entrypoint.sh: not found
-```
-
-To fix this, configure your editor to save shell scripts with **LF** by default.
-
-
-## Running 
-
-Prepare a folder on your machine containing:
-* A building footprint shapefile
-  (should include `.shp`, `.dbf`, `.shx`)
-* A `.las` point cloud file (point classification is required, automatic point classification is planned for next Lid2Lod version!)
-* A folder where to store the outputs
-
-You can then run Lid2LOD_v1 by running the following command, depending on your OS:
+# TODO
 
 ### **Run command (Windows)**
 ```powershell
-docker run --rm -v "X:\path\to\my_data:/data" lid2lod_v1 /data/<buildings_footprints.shp> /data/<point_cloud.las> /data/<output_folder>
+docker run --rm -v "$($PWD.Path)\test:/data" cityloder-app /data/matera.shp /data/matera_street.geojson /data/matera.las /data/output/matera
 ```
 
-### **Run command (Linux/macOS)**
-
-```bash
-docker run --rm -v "/path/to/my_data:/data" lid2lod_v1 /data/<buildings_footprints.shp> /data/<point_cloud.las> /data/<output_folder>
-```
 
 ## Output
 
