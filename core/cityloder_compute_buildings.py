@@ -329,12 +329,14 @@ def main(temp_fold, xyz, other, M, final_id, final_check_adj):
     zMin_default = np.mean(other[:, 2])
     points_ground = np.empty((0, 4))
 
+    buildings_outside_pc = 0
+
     for i in range(0, len(M)):
 
         # Computing other_aus, control, X, Y, xy, zMin, building
         other_aus,X,Y,building = PointSelectionAndDataStructure(xyz,M[i],other)
 
-        if building.shape[0] > X.shape[0]:
+        if building.shape[0] > 0:
             if building.shape[0] > 50000:
                 building = building[::10, :]
 
@@ -417,6 +419,11 @@ def main(temp_fold, xyz, other, M, final_id, final_check_adj):
             exportFacades(tr,points,dirNames)
             exportPavement(points_build_f,lab,dirNames)
             exportRoof(points_build_r,lab,dirNames)
+
+        else: 
+            buildings_outside_pc+=1
     
     print("Saved building polygons:", len(M))
+
+    return buildings_outside_pc
 

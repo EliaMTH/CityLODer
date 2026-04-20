@@ -63,7 +63,7 @@ def run_cityloder_pipeline(
 
     # Compute buildings
     buildings_extraction_start = time.perf_counter()
-    pc2offs(
+    buildings_outside_pc = pc2offs(
         temp_fold,
         xyz_building,
         xyz_ground,
@@ -71,6 +71,7 @@ def run_cityloder_pipeline(
         final_id,
         final_check_adj,
     )
+
 
     # Generate ground polygon
     generate_ground_polygon(
@@ -111,6 +112,14 @@ def run_cityloder_pipeline(
     print(f"{'# Footprints in the shapefile:':30s} {len(M_ori):8d}")
     print(f"{'# Buildings extracted:':30s} {len(final_id):8d}")
     print(f"{'# Streets in the street graph:':30s} {street_count:8d}")
+
+    # Footprints summary
+    print(f"{' Footprints summary ':=^41}")
+    print(f"{'Initial buildings:':<30} {len(M_ori)}")
+    print(f"{'After preprocess:':<30} {len(M)}")
+    print(f"{'With enough points:':<30} {len(M) - buildings_outside_pc}")
+    print(f"{'=':=>41}")
+
 
     timings = [
         ("PC Load:", load_duration),

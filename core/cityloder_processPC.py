@@ -109,7 +109,7 @@ def generate_ground_polygon(xyz,other,outname = "ground_polygon"):
 
     
     # Add small space around BB  (T = 100)
-    T = 100
+    T = 200
     xy[0, 0] += T;   xy[0, 1] -= T
     xy[1, 0] -= T;   xy[1, 1] -= T
     xy[2, 0] -= T;   xy[2, 1] += T
