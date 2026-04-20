@@ -49,10 +49,15 @@ def run_cityloder_pipeline(
     )
 
     # Preprocess footprints
+    preprocess_start = time.perf_counter()
     M, final_id, final_check_adj, M_ori = footprint_preprocess(input2D_path)
 
     # Preprocess graph
     graph_updated_path = preprocess_graph(graph_path, xyz_ground, outname)
+
+    preprocess_end = time.perf_counter()
+    preprocess_duration = preprocess_end - preprocess_start
+    print(f"preprocess duration: {preprocess_duration:.2f} s")
 
     # Compute buildings
     pc2offs(
@@ -65,13 +70,19 @@ def run_cityloder_pipeline(
     )
 
     # Generate ground polygon
+    building_processing_start = time.perf_counter()
     generate_ground_polygon(
         xyz_building,
         xyz_ground,
         ground_polygon_name,
     )
 
+    ground_polygon_end = time.perf_counter()
+    ground_polygon_duration = ground_polygon_end - building_processing_start
+    print(f"building processing duration: {ground_polygon_duration:.2f} s")
+
     # Generate CityJSON
+    cityjson_start = time.perf_counter()
     cityJSONgen(
         temp_fold,
         outname,
@@ -79,6 +90,10 @@ def run_cityloder_pipeline(
         M_ori,
         final_id,
     )
+
+    cityjson_end = time.perf_counter()
+    cityjson_duration = cityjson_end - cityjson_start
+    print(f"generate cityjson duration: {cityjson_duration:.2f} s")
 
     end = time.perf_counter()
     elapsed = end - start

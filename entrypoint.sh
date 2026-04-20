@@ -27,6 +27,7 @@ echo "---------------------------------------"
 echo "Running core..."
 echo "---------------------------------------"
 
+
 python3 /core/cityloder_main.py \
     "$INPUT2D_PATH" \
     "$GRAPH_PATH" \
@@ -41,6 +42,8 @@ echo "---------------------------------------"
 echo "Running mesh_gen..."
 echo "---------------------------------------"
 
+MESH_GEN_START_MS=$(date +%s%3N)
+
 set +e
 
 /mesh_gen/build/city_iconic_mesh \
@@ -52,6 +55,13 @@ set +e
 PT2_EXIT_CODE=$?
 
 set -e
+
+MESH_GEN_END_MS=$(date +%s%3N)
+MESH_GEN_DURATION_MS=$((MESH_GEN_END_MS - MESH_GEN_START_MS))
+
+MESH_GEN_DURATION=$(awk "BEGIN { printf \"%.2f\", $MESH_GEN_DURATION_MS/1000 }")
+
+echo "mesh_gen duration: ${MESH_GEN_DURATION}s"
 
 if [ "$PT2_EXIT_CODE" -ne 0 ]; then
     echo "WARNING: city_iconic_mesh failed with exit code $PT2_EXIT_CODE"
