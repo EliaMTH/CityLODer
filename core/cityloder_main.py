@@ -160,7 +160,7 @@ if __name__ == "__main__":
             ground_polygon_name=ground_polygon_name,
         )
 
-        print(result)
+        # print(result)
 
     except ValueError:
         print(
