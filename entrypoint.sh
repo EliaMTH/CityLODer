@@ -10,15 +10,17 @@ OUTPUT_FILE_PATH_AND_NAME="$4"
 # Optional CLI inputs
 CLASS_BUILDING="${5:-6}"
 CLASS_GROUND="${6:-2}"
-TEMP_FOLD="${7:-/working_folder}"
-GROUND_POLYGON_NAME="${8:-/working_folder/ground_polygon}"
+TEMP_FOLD="${7:-/workspace/working_folder}"
+
+
 
 if [ "$#" -lt 4 ]; then
-    echo "Correct usage: /entrypoint.sh <input2D_path> <graph_path> <las_path> <output_file_path_and_name> [class_building] [class_ground] [temp_fold] [ground_polygon_name]"
+    echo "Correct usage: /entrypoint.sh <input2D_path> <graph_path> <las_path> <output_file_path_and_name> [class_building] [class_ground] [temp_fold]"
     exit 1
 fi
 
 OUTPUT_DIR="$(dirname "$OUTPUT_FILE_PATH_AND_NAME")"
+GROUND_POLYGON_NAME="$TEMP_FOLD/goudnpolygon"
 
 mkdir -p "$TEMP_FOLD"
 mkdir -p "$OUTPUT_DIR"

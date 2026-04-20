@@ -53,6 +53,10 @@ RUN mkdir -p /mesh_gen/build \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# Create writable temp workspace for runtime
+RUN mkdir -p /workspace/working_folder \
+    && chown -R appuser:appuser /workspace/working_folder
+
 # Make sure the runtime user can read/execute app files
 RUN chown -R appuser:appuser /workspace /core /mesh_gen /entrypoint.sh
 
