@@ -4,6 +4,8 @@ import json
 import math
 import numpy as np
 
+from pathlib import Path
+
 # ---------------------------------------------------------------------
 # OFF PARSING
 # ---------------------------------------------------------------------
@@ -401,7 +403,11 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
 
 def main(working_folder, outname, street_geojson=None, footprint_original=None, index_original=None):
     buildings = parse_building_dataset(working_folder)
-    streets = parse_street_geojson(street_geojson, default_z=0.0, road_width=2.0) if street_geojson else []
+    if  street_geojson == "":
+        streets = []
+    else:
+        streets = parse_street_geojson(street_geojson, default_z=0.0, road_width=2.0) if street_geojson else []
+    
     create_cityjson(list(buildings.values()), streets, outname, None, footprint_original, index_original)
 
 

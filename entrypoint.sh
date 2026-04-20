@@ -12,7 +12,9 @@ CLASS_BUILDING="${5:-6}"
 CLASS_GROUND="${6:-2}"
 TEMP_FOLD="${7:-/workspace/working_folder}"
 
-
+if [ "$GRAPH_PATH" = "." ]; then
+    GRAPH_PATH=""
+fi
 
 if [ "$#" -lt 4 ]; then
     echo "Correct usage: /entrypoint.sh <input2D_path> <graph_path> <las_path> <output_file_path_and_name> [class_building] [class_ground] [temp_fold]"

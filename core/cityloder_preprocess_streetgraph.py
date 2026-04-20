@@ -32,12 +32,24 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
     - "NO" is kept/set from existing "NO", else "osmid", else 0
     - properties with null values are removed
     """
-    geojson_path = Path(geojson_path)
+    
 
 
-    # Load the GeoJSON structure in memory.
-    with geojson_path.open("r", encoding="utf-8") as f:
-        geojson = json.load(f)
+    # Load the GeoJSON structure in memory. If ".", load an empty graph
+    if geojson_path == "":
+        geojson = {"type": "FeatureCollection", "features": []}
+        out_path = ""
+        street_count = 0
+
+        return out_path, street_count
+    
+    else:
+        # Load the GeoJSON structure in memory.
+        geojson_path = Path(geojson_path)
+        with geojson_path.open("r", encoding="utf-8") as f:
+            geojson = json.load(f)
+
+
 
     # Initialize stuff
     nodes = []
@@ -80,7 +92,8 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
         for coord, z in zip(nodes, xyz_ground[idx, 2]):
             coord[:] = [coord[0], coord[1], float(z)]
 
-    # Save beside the input file, appending "_updated" to the filename.
+    # Save appending "_updated" to the filename.
+
     out_path = Path(out_folder).parent / f"{geojson_path.stem}_updated{geojson_path.suffix}"
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(geojson, f, ensure_ascii=False, indent=2)
