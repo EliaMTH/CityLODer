@@ -1,3 +1,4 @@
-CPP1/build
+mesh_gen/build
+mesh_gen/.qtcreator
 data
 *.DS_Store

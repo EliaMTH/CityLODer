@@ -42,11 +42,14 @@ def run_cityloder_pipeline(
     os.makedirs(temp_fold, exist_ok=True)
 
     # Read LAS / point cloud
+    load_start = time.perf_counter()
     xyz_building, xyz_ground, coords = read_las_file(
         las_path,
         class_building,
         class_ground,
     )
+    load_end = time.perf_counter()
+    load_duration = load_end - load_start
 
     # Preprocess footprints
     preprocess_start = time.perf_counter()
@@ -59,6 +62,7 @@ def run_cityloder_pipeline(
     preprocess_duration = preprocess_end - preprocess_start
 
     # Compute buildings
+    buildings_extraction_start = time.perf_counter()
     pc2offs(
         temp_fold,
         xyz_building,
@@ -69,15 +73,14 @@ def run_cityloder_pipeline(
     )
 
     # Generate ground polygon
-    building_processing_start = time.perf_counter()
     generate_ground_polygon(
         xyz_building,
         xyz_ground,
         ground_polygon_name,
     )
 
-    ground_polygon_end = time.perf_counter()
-    ground_polygon_duration = ground_polygon_end - building_processing_start
+    buildings_extraction_end = time.perf_counter()
+    buildings_extraction_duration = buildings_extraction_end - buildings_extraction_start
 
     # Generate CityJSON
     cityjson_start = time.perf_counter()
@@ -110,8 +113,9 @@ def run_cityloder_pipeline(
     print(f"{'# Streets in the street graph:':30s} {street_count:8d}")
 
     timings = [
+        ("PC Load:", load_duration),
         ("Pre-processing:", preprocess_duration),
-        ("Buildings Extraction:", ground_polygon_duration),
+        ("Buildings Extraction:", buildings_extraction_duration),
         ("CityJSON Generation:", cityjson_duration),
         ("Total execution time:", elapsed),
     ]

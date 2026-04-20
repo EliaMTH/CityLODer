@@ -15,6 +15,6 @@ sudo docker run --rm \
   6 \
   2 \
   /data/temp \
-  /data/temp/ground_polygon
-  
+  /data/temp/ground_polygon \
+  |& tee "${DATA_DIR}/log.txt"
   
