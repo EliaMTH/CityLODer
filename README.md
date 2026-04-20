@@ -4,8 +4,9 @@
 ```powershell
 docker run --rm -v "$($PWD.Path)\test:/data" cityloder-app /data/matera.shp /data/matera_street.geojson /data/matera.las /data/output/matera
 ```
-
-
+```
+docker run --user $(id -u):$(id -g) ...
+```
 ## Output
 
 After the process is completed, the output folder contains 4 files:
