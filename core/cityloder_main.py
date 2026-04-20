@@ -53,11 +53,10 @@ def run_cityloder_pipeline(
     M, final_id, final_check_adj, M_ori = footprint_preprocess(input2D_path)
 
     # Preprocess graph
-    graph_updated_path = preprocess_graph(graph_path, xyz_ground, outname)
+    graph_updated_path, street_count = preprocess_graph(graph_path, xyz_ground, outname)
 
     preprocess_end = time.perf_counter()
     preprocess_duration = preprocess_end - preprocess_start
-    print(f"preprocess duration: {preprocess_duration:.2f} s")
 
     # Compute buildings
     pc2offs(
@@ -79,7 +78,6 @@ def run_cityloder_pipeline(
 
     ground_polygon_end = time.perf_counter()
     ground_polygon_duration = ground_polygon_end - building_processing_start
-    print(f"building processing duration: {ground_polygon_duration:.2f} s")
 
     # Generate CityJSON
     cityjson_start = time.perf_counter()
@@ -93,7 +91,6 @@ def run_cityloder_pipeline(
 
     cityjson_end = time.perf_counter()
     cityjson_duration = cityjson_end - cityjson_start
-    print(f"generate cityjson duration: {cityjson_duration:.2f} s")
 
     end = time.perf_counter()
     elapsed = end - start
@@ -106,7 +103,23 @@ def run_cityloder_pipeline(
         "elapsed_seconds": round(elapsed, 2),
     }
 
-    print(f"Total execution time: {elapsed:.2f} seconds")
+    print("=" * 16 + " Summary " + "=" * 16)
+    print(f"{'# Points in the pointcloud:':30s} {len(coords):8d}")
+    print(f"{'# Footprints in the shapefile:':30s} {len(M_ori):8d}")
+    print(f"{'# Buildings extracted:':30s} {len(final_id):8d}")
+    print(f"{'# Streets in the street graph:':30s} {street_count:8d}")
+
+    timings = [
+        ("Pre-processing:", preprocess_duration),
+        ("Buildings Extraction:", ground_polygon_duration),
+        ("CityJSON Generation:", cityjson_duration),
+        ("Total execution time:", elapsed),
+    ]
+    print("=" * 16 + " Timings " + "=" * 16)
+    for label, value in timings:
+        print(f"{label:30s} {value:8.2f} s")
+    print("=" * 41)
+
     return result
 
 # -----------------------------------------------------------------------------

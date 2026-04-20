@@ -54,6 +54,11 @@ Trimesh<> triangulate_with_holes(const Polygonmesh<> &m, const std::vector<uint>
 
     for(uint pid : holes) {
         std::vector<uint> tess = m.poly_tessellation(pid);
+        if (tess.size() < 3) {
+            std::cerr << "find_holes - WARNING: polygon " << pid
+                      << " has less than 3 vertices, cannot find a point inside it" << std::endl;
+            continue;
+        }
         vec3d c;
         for (uint i=0; i<tess.size()-3; i=i+3) {
             vec3d v0 = m.vert(tess.at(i));
@@ -67,7 +72,10 @@ Trimesh<> triangulate_with_holes(const Polygonmesh<> &m, const std::vector<uint>
                 break;
             }
         }
-        assert(!c.is_null() && "find_holes: could not find a point inside the polygon");
+        if (c.is_null()) {
+            std::cerr << "find_holes - WARNING: could not find a point inside polygon " << pid
+                      << ", it may be degenerate or have aligned edges" << std::endl;
+        }
         holes_centers.push_back(vec2d(c.x(), c.y()));
     }
 
@@ -114,8 +122,10 @@ Trimesh<> triangulate_with_holes_and_edges(const Polygonmesh<> &m, const std::ve
                 break;
             }
         }
-        assert(!c.is_null() && "find_holes: could not find a point inside the polygon");
-
+        if (c.is_null()) {
+            std::cerr << "find_holes - WARNING: could not find a point inside polygon " << pid
+                      << ", it may be degenerate or have aligned edges" << std::endl;
+        }
         holes_centers.push_back(vec2d(c.x(), c.y()));
     }
 

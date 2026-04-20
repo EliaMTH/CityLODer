@@ -98,8 +98,9 @@ void City::compute_buildings_mesh()
     buildings_mesh.clear();
     int count = 0;
     for (Building &B : buildings) {
+        std::cout << "\r\033[K"; // deletes the line
         std::cout << "City::compute_buildings_mesh - building " << count << " / "
-                  << buildings.size() << "\r" << std::flush;
+                  << buildings.size() << std::flush;
         if (!B.COMPUTED) {
             auto buf = suppress_stdout();
             B.create_building_mesh();
@@ -115,6 +116,7 @@ void City::compute_buildings_mesh()
         }
         ++count;
     }
+    std::cout << std::endl;
 }
 
 // --------------------------------------------------------------------------------------------
@@ -133,8 +135,11 @@ void City::compute_city_mesh()
     uint n_city      = city_mesh.num_polys();
     uint n           = n_ground + n_buildings;
     for (uint pid=0; pid<n_city; ++pid) {
-        std::cout << "City::compute_city_mesh - poly " << pid << " / "
-                  << n_city << "\r" << std::flush;
+        if (pid%100 == 0) {
+            std::cout << "\r\033[K"; // deletes the line
+            std::cout << "City::compute_city_mesh - poly " << pid << " / "
+                      << n_city << std::flush;
+        }
         if (pid < n_ground) {
             city_mesh.poly_data(pid).label = ground_mesh->poly_data(pid).label;
         } else if (pid < n) {
@@ -143,6 +148,7 @@ void City::compute_city_mesh()
             city_mesh.poly_data(pid).label = -1;
         }
     }
+    std::cout << std::endl;
     if (WITH_STREETS) {
         mark_streets(*ground_mesh);
     }
@@ -152,7 +158,7 @@ void City::compute_city_mesh()
 
 void City::mark_streets(const Trimesh<> &m)
 {
-    assert(WITH_STREETS);
+    if (!WITH_STREETS) return;
 
     // mark the edges corresponding to streets
     int count = 0;
@@ -256,7 +262,7 @@ void City::load_buildings_data(const string &dir_path)
 {
     if (!fs::exists(dir_path)) {
         std::cerr << "load_buildings - ERROR: the buildings path does not exist" << std::endl;
-        assert(false);
+        exit(0);
     }
     for (const auto &entry : fs::directory_iterator(dir_path)) {
         if (!entry.is_directory()) continue;
@@ -272,7 +278,7 @@ void City::load_buildings_data(const string &dir_path)
         }
 
         // load data
-        // if (ID == 850 || ID == 305|| ID == 358 || ID == 2446 || ID == 3289 ) {
+        // if (ID == 68 ) {
         //     std::cout << "load_buildings - WARNING: could not load footprint mesh, "
         //               << "discarded Building " << ID << std::endl;
         //     continue;
@@ -325,7 +331,7 @@ void City::load_buildings_data(const string &dir_path)
     }
     if (buildings.empty()) {
         std::cerr << "load_buildings - ERROR: no buildings found!" << std::endl;
-        assert(false);
+        exit(0);
     }
 }
 

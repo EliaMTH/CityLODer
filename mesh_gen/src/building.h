@@ -110,7 +110,11 @@ std::vector<uint> Building::extract_holes_ccs(const Polygonmesh<> &m) const
         for (const std::unordered_set<uint> &ccs : ccs) {
             std::vector<uint> vlist(ccs.begin(), ccs.end());
             int pid = m.poly_id(vlist);
-            assert(pid >= 0);
+            if (pid == -1) {
+                std::cerr << "Building::extract_holes_ccs - ERROR: could not find the polygon corresponding to the connected component!"
+                          << std::endl;
+                exit(0);
+            }
             holes.push_back(pid);
         }
     }
@@ -224,8 +228,8 @@ void Building::create_building_mesh()
         std::cerr << "Building::create_building_mesh - ERROR: triangulation failed for Building "
                   << building_ID << ", roof has " << roof.num_verts() << " verts but the triangulated roof has "
                   << roof_tri.num_verts() << " verts. Check the roof mesh and its holes." << std::endl;
+        exit(0);
     }
-    assert(roof_tri.num_verts() == roof.num_verts());
 
     // project back to the original z-coordinates
     project_back_mesh(roof_tri, z_map);

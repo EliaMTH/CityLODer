@@ -97,7 +97,10 @@ void append_map(const std::vector<vec3d> &verts1,
                 const std::vector<vec3d> &verts2,
                 std::unordered_map<uint, double> &map2)
 {
-    assert(verts1.size() == map1.size());
+    if ( verts1.size() != map1.size()) {
+        std::cerr << "append_map - ERROR: the size of the vertex list does not match the size of the map" << std::endl;
+        exit(0);
+    }
     // assert(verts2.size() == map2.size());
 
     for (uint vid1=0; vid1<verts1.size(); ++vid1) {
@@ -110,7 +113,10 @@ void append_map(const std::vector<vec3d> &verts1,
 
         // add the vertex to the map
         uint vid2 = map2.size();
-        assert(map2.find(vid2) == map2.end());
+        if (map2.find(vid2) != map2.end()) {
+            std::cerr << "append_map - ERROR: the new vertex ID already exists in the map" << std::endl;
+            exit(0);
+        }
         map2[vid2] = map1.at(vid1);
     }
 }
@@ -126,7 +132,10 @@ template<class M, class V, class E, class P>
 bool is_mesh_inside(const AbstractPolygonMesh<M,V,E,P> &m0, const AbstractPolygonMesh<M,V,E,P> &m1)
 {
     // check if the mesh m1 is completely inside the mesh m0
-    assert(m0.num_polys() == 1 && "WARNING - is_mesh_inside: m0 has more than one poly");
+    if ( m0.num_polys() == 1) {
+        std::cerr << "is_mesh_inside - ERROR: m0 has more than one poly" << std::endl;
+        return false;
+    }
     for(uint pid=0; pid<m1.num_polys(); ++pid) {
         for (vec3d &v : m1.poly_verts(pid)) {
             if (!point_in_polygon(m0, v, 0)) {
@@ -140,7 +149,10 @@ bool is_mesh_inside(const AbstractPolygonMesh<M,V,E,P> &m0, const AbstractPolygo
 template<class M, class V, class E, class P>
 bool polygons_intersect(const AbstractPolygonMesh<M,V,E,P> &m, const uint pid0, const uint pid1)
 {
-    assert(m.num_polys() > std::max(pid0, pid1));
+    if (m.num_polys() <= std::max(pid0, pid1)) {
+        std::cerr << "polygons_intersect - ERROR: the polygon IDs are out of range" << std::endl;
+        return false;
+    }
     for (uint eid0 : m.adj_p2e(pid0)) {
         for (uint eid1 : m.adj_p2e(pid1)) {
             std::vector<vec3d> verts0 = m.edge_verts(eid0);
@@ -188,7 +200,7 @@ vec3d pick_point_in_polygon(AbstractPolygonMesh<M,V,E,P> &m,
     std::vector<uint> tess = m.poly_tessellation(pid);
     if (tess.empty()) {
         std::cerr << "pick_point_in_polygon - ERROR: could not triangulate polygon " << pid << std::endl;
-        assert(false);
+        exit(0);
     }
     vec3d c;
     double eps   = 0.1;
@@ -240,7 +252,7 @@ void open_directory(const std::string &path, bool erase = true) {
             fs::create_directories(path);
         } catch (const std::exception &e) {
             std::cerr << "Error creating folder: " << e.what() << std::endl;
-            assert(false);
+            exit(0);
         }
     } else if (erase) {
         // if the folder already exists, delete its content

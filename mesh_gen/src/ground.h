@@ -73,8 +73,9 @@ void Ground::compute()
     vector<vec3d> holes;
     int count = 0;
     for (Building B : buildings) {
+        std::cout << "\r\033[K"; // deletes the line
         std::cout << "Ground::compute_ground_mesh - building " << count << " / "
-                  << buildings.size() << "\r" << std::flush;
+                  << buildings.size() << std::flush;
         // project the footprint to the plane z=0
         std::unordered_map<uint, double> footprint_z_map;
         B.project_footprint(footprint_z_map);
@@ -87,13 +88,15 @@ void Ground::compute()
         holes.push_back(B.get_point_in_footprint());
         count++;
     }
+    std::cout << std::endl;
 
     // add streets to the mesh
     if (WITH_STREETS) {
         count = 0;
         for (Street s : streets) {
-            std::cout << "Ground::compute_ground_mesh - street " << count << " / "
-                      << streets.size() << "\r" << std::flush;
+            std::cout << "\r\033[K"; // deletes the line
+            std::cout << "Ground::compute - street " << count << " / "
+                      << streets.size() << std::flush;
             // project the street to the plane z=0
             std::unordered_map<uint, double> street_z_map;
             s.project(street_z_map);
@@ -103,11 +106,18 @@ void Ground::compute()
             s.add_to_mesh(m);
             count++;
         }
+        std::cout << std::endl;
     }
-    assert(z_map.size() == m.num_verts());
+    if (z_map.size() != m.num_verts()) {
+        std::cout << "  Ground::compute - ERROR: projection added "
+                  << z_map.size() - m.num_verts()
+                  << " new vertices in the mesh!" << std::endl;
+        exit(0);
+    }
 
     // triangulate the mesh with holes
     ground_mesh = triangulate_with_holes(m, holes);
+
     // copy edge labels
     if (WITH_STREETS) {
         mark_streets(m);

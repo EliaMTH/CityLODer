@@ -42,6 +42,7 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
     # Initialize stuff
     nodes = []
     xy = []
+    street_count = 0
 
     # Collect references to the actual coordinate lists in the GeoJSON.
     for feature in geojson.get("features", []):
@@ -64,6 +65,9 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
 
         # Store each coordinate list itself, plus its XY values for the KDTree query.
         for line in parts:
+            if len(line) >= 2:
+                street_count += len(line) - 1
+
             for coord in line:
                 if len(coord) >= 2:
                     nodes.append(coord)
@@ -82,4 +86,4 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
         json.dump(geojson, f, ensure_ascii=False, indent=2)
 
 
-    return out_path
+    return out_path, street_count
