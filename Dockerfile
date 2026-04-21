@@ -11,13 +11,6 @@ RUN apt-get update && apt-get install -y \
     build-essential cmake git \
     && rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user (fixes file property issues with ubuntu and possibly mac)
-ARG APP_UID=1000
-ARG APP_GID=1000
-
-RUN groupadd -g ${APP_GID} appuser \
-    && useradd -m -u ${APP_UID} -g ${APP_GID} -s /bin/bash appuser
-
 # Create workspace for Python scripts
 WORKDIR /workspace
 
@@ -52,15 +45,5 @@ RUN mkdir -p /mesh_gen/build \
 # ------------------------------------------------------------
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
-
-# Create writable temp workspace for runtime
-RUN mkdir -p /workspace/working_folder \
-    && chown -R appuser:appuser /workspace/working_folder
-
-# Make sure the runtime user can read/execute app files
-RUN chown -R appuser:appuser /workspace /core /mesh_gen /entrypoint.sh
-
-# Switch to non-root user for runtime
-USER appuser
 
 ENTRYPOINT ["/entrypoint.sh"]
