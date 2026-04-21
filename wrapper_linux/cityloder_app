@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
 # Make it executable:
-# chmod +x cityloder_app.sh
+# chmod +x cityloder_app
 
 # Make it exectuable anywhere:
-# sudo chmod +x /path/to/cityloder_app.sh
-# sudo ln -s /path/to/cityloder_app.sh /usr/local/bin/cityloder_app
+# sudo chmod +x /path/to/cityloder_app
+# sudo ln -s /path/to/cityloder_app /usr/local/bin/cityloder_app
 
 
 
