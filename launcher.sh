@@ -1,6 +1,11 @@
 #!/bin/bash
 
-DATA_DIR="/home/tommaso/Scrivania/Lid2LOD/data/Matera"
+DATA_DIR="$(pwd)/data/Matera"
+mkdir -p "${DATA_DIR}/output"
+
+echo ""
+echo "Launching CityLODer on ${DATA_DIR}"
+echo ""
 
 sudo docker run --rm \
   -u $(id -u):$(id -g) \
@@ -11,10 +16,10 @@ sudo docker run --rm \
   /data/footprints.shp \
   /data/street_graph_z.geojson \
   /data/point_cloud.las \
-  /data/out \
+  /data/output/mesh \
   6 \
   2 \
-  /data/temp \
-  /data/temp/ground_polygon \
-  |& tee "${DATA_DIR}/log.txt"
+  /data/output/tmp_buildings \
+  /data/output/tmp_buildings/ground_polygon \
+  |& tee "${DATA_DIR}/output/log.txt"
   

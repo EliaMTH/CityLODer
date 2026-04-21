@@ -61,9 +61,9 @@ int main(int argc, char *argv[])
     /*************** PRINT SUMMARY ****************/
     std::cout << std::string(16, '=') << " Summary " << std::string(16, '=') << std::endl;
     std::cout << std::left;
-    std::cout << std::setw(30) << "# Buildings in the mesh:"
+    std::cout << std::setw(30) << "Buildings in the mesh:"
               << std::right << std::setw(8) << city.n_buildings() << "\n";
-    std::cout << std::left << std::setw(30) << "# Streets in the mesh:"
+    std::cout << std::left << std::setw(30) << "Streets in the mesh:"
               << std::right << std::setw(8) << city.n_streets() << "\n";
 
     std::cout << std::string(16, '=') << " Timings " << std::string(16, '=') << std::endl;

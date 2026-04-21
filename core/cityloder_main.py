@@ -107,20 +107,6 @@ def run_cityloder_pipeline(
         "elapsed_seconds": round(elapsed, 2),
     }
 
-    print("=" * 16 + " Summary " + "=" * 16)
-    print(f"{'# Points in the pointcloud:':30s} {len(coords):8d}")
-    print(f"{'# Footprints in the shapefile:':30s} {len(M_ori):8d}")
-    print(f"{'# Buildings extracted:':30s} {len(final_id):8d}")
-    print(f"{'# Streets in the street graph:':30s} {street_count:8d}")
-
-    # Footprints summary
-    print(f"{' Footprints summary ':=^41}")
-    print(f"{'Initial buildings:':<30} {len(M_ori)}")
-    print(f"{'After preprocess:':<30} {len(M)}")
-    print(f"{'With enough points:':<30} {len(M) - buildings_outside_pc}")
-    print(f"{'=':=>41}")
-
-
     timings = [
         ("PC Load:", load_duration),
         ("Pre-processing:", preprocess_duration),
@@ -128,11 +114,22 @@ def run_cityloder_pipeline(
         ("CityJSON Generation:", cityjson_duration),
         ("Total execution time:", elapsed),
     ]
-    print("=" * 16 + " Timings " + "=" * 16)
+    
+    print(f"{' Summary ':=^41}")
+    print(f"{'Points in the pointcloud:':30s} {len(coords):8d}")
+    print(f"{'Footprints in the shapefile:':30s} {len(M_ori):8d}")
+    print(f"{'Streets in the street graph:':30s} {street_count:8d}")
+
+    print(f"{' Buildings ':=^41}")
+    print(f"{'Initial buildings:':30s} {len(M_ori)}")
+    print(f"{'Buildings after pre-processing:':30s} {len(M)}")
+    print(f"{'Buildings with enough points:':30s} {len(M) - buildings_outside_pc}")
+
+    print(f"{' Timings ':=^41}")
     for label, value in timings:
         print(f"{label:30s} {value:8.2f} s")
-    print("=" * 41)
-
+    print(f"{'=':=>41}")
+    
     return result
 
 # -----------------------------------------------------------------------------
