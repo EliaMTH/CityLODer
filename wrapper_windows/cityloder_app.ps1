@@ -18,7 +18,7 @@ function Show-Usage {
 Usage:
   .\cityloder_app.ps1 -LAS_PATH <file> -INPUT2D_PATH <file> [-OUTPUT_FILE_PATH <path>] [-OUTPUT_FILE_NAME <name>] [-GRAPH_PATH <path>] [-CLASS_BUILDING <int>] [-CLASS_GROUND <int>] [-TEMP_FOLD <path>]
 
-Warning 1: LAS_PATH, INPUT2D_PATH, OUTPUT_FILE_PATH, and GRAPH_PATH are assumed to be relative to the current folder when not set to "."
+Warning 1: LAS_PATH, INPUT2D_PATH, OUTPUT_FILE_PATH, and GRAPH_PATH are assumed to be relative to the current folder.
 Warning 2: The docker image is assumed to be called "cityloder". Change the line accordingly if you used another name.
 
 Arguments:

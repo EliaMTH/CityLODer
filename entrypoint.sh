@@ -6,19 +6,12 @@ LAS_PATH="$1"
 INPUT2D_PATH="$2"
 
 # Optional CLI inputs
-OUTPUT_FILE_PATH="${3:-/output}"
-OUTPUT_FILE_NAME="${4:-mycity}"
-GRAPH_PATH="${5:-.}"
-CLASS_BUILDING="${6:-6}"
-CLASS_GROUND="${7:-2}"
-TEMP_FOLD="${8:-/tmp/working_folder}"
-
-# OUTPUT_FILE_PATH="$3"
-# OUTPUT_FILE_NAME="$4"
-# GRAPH_PATH="$5"
-# CLASS_BUILDING="$6"
-# CLASS_GROUND="$7"
-# TEMP_FOLD="$8"
+OUTPUT_FILE_PATH="$3"
+OUTPUT_FILE_NAME="$4"
+GRAPH_PATH="$5"
+CLASS_BUILDING="$6"
+CLASS_GROUND="$7"
+TEMP_FOLD="$8"
 
 if [ "$#" -lt 2 ]; then
     echo "At least footprints, and las are required."

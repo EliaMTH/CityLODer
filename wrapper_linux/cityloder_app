@@ -1,56 +1,133 @@
 #!/usr/bin/env bash
 
-# Make this script executable by running ---> chmod +x cityloder_app
-# Make this script work in every folder with these two lines:
-# sudo cp cityloader_app /usr/local/bin/
-# sudo chmod +x /usr/local/bin/cityloader_app 
-# 
-# Note that the script is copied, not moved. 
+# Make it executable:
+# chmod +x cityloder_app.sh
 
-usage() {
-    cat <<EOF
+# Make it exectuable anywhere:
+# sudo chmod +x /path/to/cityloder_app.sh
+# sudo ln -s /path/to/cityloder_app.sh /usr/local/bin/cityloder_app
+
+
+
+set -euo pipefail
+
+HELP=0
+
+LAS_PATH=""
+INPUT2D_PATH=""
+OUTPUT_FILE_PATH="output"
+OUTPUT_FILE_NAME="mycity"
+GRAPH_PATH="."
+CLASS_BUILDING="6"
+CLASS_GROUND="2"
+TEMP_FOLD="."
+
+show_usage() {
+cat <<'EOF'
 Usage:
-  ./cityloder_app LAS_PATH INPUT2D_PATH [OUTPUT_FILE_PATH] [OUTPUT_FILE_NAME] [GRAPH_PATH] [CLASS_BUILDING] [CLASS_GROUND] [TEMP_FOLD]
-  Warning 1: cityloder_app assumes all paths you pass are relative to the current folder
-  Warning 2: cityloder_app assumes the docker image is called "cityloder". Change the line accordingly if you used another name.
+  ./cityloder_app -LAS_PATH <file> -INPUT2D_PATH <file> [-OUTPUT_FILE_PATH <path>] [-OUTPUT_FILE_NAME <name>] [-GRAPH_PATH <path>] [-CLASS_BUILDING <int>] [-CLASS_GROUND <int>] [-TEMP_FOLD <path>]
+
+Warning 1: LAS_PATH, INPUT2D_PATH, OUTPUT_FILE_PATH, and GRAPH_PATH are assumed to be relative to the current folder.
+Warning 2: The docker image is assumed to be called "cityloder". Change the line accordingly if you used another name.
 
 Arguments:
   LAS_PATH          Required. LAS input file
   INPUT2D_PATH      Required. Footprints input file
   OUTPUT_FILE_PATH  Optional. Default: output
   OUTPUT_FILE_NAME  Optional. Default: mycity
-  GRAPH_PATH        Optional. Default: -no graph-
+  GRAPH_PATH        Optional. Default: .
   CLASS_BUILDING    Optional. Default: 6
   CLASS_GROUND      Optional. Default: 2
-  TEMP_FOLD         Optional. Default: (inside container)
+  TEMP_FOLD         Optional. Default: .
 EOF
 }
 
-if [ "$#" -lt 2 ]; then
-    usage
-    exit 1
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -Help|--help|-h)
+      HELP=1
+      shift
+      ;;
+    -LAS_PATH)
+      LAS_PATH="${2:-}"
+      shift 2
+      ;;
+    -INPUT2D_PATH)
+      INPUT2D_PATH="${2:-}"
+      shift 2
+      ;;
+    -OUTPUT_FILE_PATH)
+      OUTPUT_FILE_PATH="${2:-}"
+      shift 2
+      ;;
+    -OUTPUT_FILE_NAME)
+      OUTPUT_FILE_NAME="${2:-}"
+      shift 2
+      ;;
+    -GRAPH_PATH)
+      GRAPH_PATH="${2:-}"
+      shift 2
+      ;;
+    -CLASS_BUILDING)
+      CLASS_BUILDING="${2:-}"
+      shift 2
+      ;;
+    -CLASS_GROUND)
+      CLASS_GROUND="${2:-}"
+      shift 2
+      ;;
+    -TEMP_FOLD)
+      TEMP_FOLD="${2:-}"
+      shift 2
+      ;;
+    *)
+      echo "Error: Unknown argument: $1" >&2
+      show_usage
+      exit 1
+      ;;
+  esac
+done
+
+if [[ "$HELP" -eq 1 ]]; then
+  show_usage
+  exit 0
 fi
 
-LAS_PATH="$1"
-INPUT2D_PATH="$2"
-OUTPUT_FILE_PATH="${3:-output}"
-OUTPUT_FILE_NAME="${4:-mycity}"
-GRAPH_PATH="${5:-.}"
-CLASS_BUILDING="${6:-6}"
-CLASS_GROUND="${7:-2}"
-TEMP_FOLD="${8:-/tmp/working_folder}"
+if [[ -z "$LAS_PATH" || -z "$INPUT2D_PATH" ]]; then
+  echo "Error: LAS_PATH and INPUT2D_PATH are required." >&2
+  show_usage
+  exit 1
+fi
 
-docker run --rm \
+current_dir="$(pwd)"
+
+las_arg="/data/$LAS_PATH"
+input2d_arg="/data/$INPUT2D_PATH"
+output_arg="/data/$OUTPUT_FILE_PATH"
+
+if [[ "$GRAPH_PATH" == "." ]]; then
+  graph_arg="."
+else
+  graph_arg="/data/$GRAPH_PATH"
+fi
+
+if [[ "$TEMP_FOLD" == "." ]]; then
+  tmpfold_arg="."
+else
+  tmpfold_arg="/data/$TEMP_FOLD"
+fi
+
+sudo docker run --rm \
   -u "$(id -u):$(id -g)" \
   -e HOME=/tmp \
   -e MPLCONFIGDIR=/tmp/matplotlib \
-  -v "$(pwd):/data" \
+  -v "${current_dir}:/data" \
   cityloder \
-  "/data/$INPUT2D_PATH" \
-  "/data/$LAS_PATH" \
-  "/data/$OUTPUT_FILE_PATH" \
+  "$las_arg" \
+  "$input2d_arg" \
+  "$output_arg" \
   "$OUTPUT_FILE_NAME" \
-  "/data/$GRAPH_PATH" \
+  "$graph_arg" \
   "$CLASS_BUILDING" \
   "$CLASS_GROUND" \
-  "/data/$TEMP_FOLD"
+  "$tmpfold_arg"
