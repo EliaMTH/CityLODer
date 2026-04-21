@@ -13,13 +13,13 @@ sudo docker run --rm \
   -e MPLCONFIGDIR=/tmp/matplotlib \
   -v "${DATA_DIR}:/data" \
   cityloder \
-  /data/footprints.shp \
-  /data/street_graph_z.geojson \
   /data/point_cloud.las \
-  /data/output/mesh \
+  /data/footprints.shp \
+  /data/output \
+  mesh \
+  /data/street_graph_z.geojson \
   6 \
   2 \
   /data/output/tmp_buildings \
-  /data/output/tmp_buildings/ground_polygon \
   |& tee "${DATA_DIR}/output/log.txt"
   

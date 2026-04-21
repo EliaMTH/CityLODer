@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+# Make this script executable by running ---> chmod +x cityloder_app
+# Make this script work in every folder with these two lines:
+# sudo cp cityloader_app /usr/local/bin/
+# sudo chmod +x /usr/local/bin/cityloader_app 
+# 
+# Note that the script is copied, not moved. 
+
+usage() {
+    cat <<EOF
+Usage:
+  ./cityloder_app LAS_PATH INPUT2D_PATH [OUTPUT_FILE_PATH] [OUTPUT_FILE_NAME] [GRAPH_PATH] [CLASS_BUILDING] [CLASS_GROUND] [TEMP_FOLD]
+  Warning 1: cityloder_app assumes all paths you pass are relative to the current folder
+  Warning 2: cityloder_app assumes the docker image is called "cityloder". Change the line accordingly if you used another name.
+
+Arguments:
+  LAS_PATH          Required. LAS input file
+  INPUT2D_PATH      Required. Footprints input file
+  OUTPUT_FILE_PATH  Optional. Default: output
+  OUTPUT_FILE_NAME  Optional. Default: mycity
+  GRAPH_PATH        Optional. Default: -no graph-
+  CLASS_BUILDING    Optional. Default: 6
+  CLASS_GROUND      Optional. Default: 2
+  TEMP_FOLD         Optional. Default: (inside container)
+EOF
+}
+
+if [ "$#" -lt 2 ]; then
+    usage
+    exit 1
+fi
+
+LAS_PATH="$1"
+INPUT2D_PATH="$2"
+OUTPUT_FILE_PATH="${3:-output}"
+OUTPUT_FILE_NAME="${4:-mycity}"
+GRAPH_PATH="${5:-.}"
+CLASS_BUILDING="${6:-6}"
+CLASS_GROUND="${7:-2}"
+TEMP_FOLD="${8:-/tmp/working_folder}"
+
+docker run --rm \
+  -u "$(id -u):$(id -g)" \
+  -e HOME=/tmp \
+  -e MPLCONFIGDIR=/tmp/matplotlib \
+  -v "$(pwd):/data" \
+  cityloder \
+  "/data/$INPUT2D_PATH" \
+  "/data/$LAS_PATH" \
+  "/data/$OUTPUT_FILE_PATH" \
+  "$OUTPUT_FILE_NAME" \
+  "/data/$GRAPH_PATH" \
+  "$CLASS_BUILDING" \
+  "$CLASS_GROUND" \
+  "/data/$TEMP_FOLD"
