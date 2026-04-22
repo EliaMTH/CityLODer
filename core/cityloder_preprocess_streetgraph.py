@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 import numpy as np
 from scipy.spatial import cKDTree
+from tqdm import tqdm
 
 
 def preprocess_graph(geojson_path, xyz_ground, out_folder):
@@ -57,7 +58,7 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
     street_count = 0
 
     # Collect references to the actual coordinate lists in the GeoJSON.
-    for feature in geojson.get("features", []):
+    for feature in tqdm(geojson.get("features", []), desc = "Processing streetgraph"):
         geom = feature.get("geometry")
         if not geom:
             continue

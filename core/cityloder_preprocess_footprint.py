@@ -2,8 +2,14 @@ import numpy as np
 import shapefile
 from shapely.geometry import GeometryCollection, Polygon
 from shapely.ops import unary_union
+from tqdm import tqdm
 
 import fast_inpolygon
+
+def polyarea(x, y):
+    x = np.asarray(x)
+    y = np.asarray(y)
+    return 0.5 * np.abs(np.dot(x, np.roll(y, 1)) - np.dot(y, np.roll(x, 1)))
 
 def _join_parts(parts, trailing_nan=True):
     chunks = []
@@ -110,7 +116,7 @@ def _geometry_to_xy(geom):
     return _join_parts(parts, trailing_nan=True)
 
 
-def footprint_preprocess(fname):
+def footprint_preprocess(fname,hole_thr = 1):
     """
     Python translation of the MATLAB function footprintPreprocess,
     with an additional MATLAB-style shaperead-like output `M`.
@@ -150,7 +156,7 @@ def footprint_preprocess(fname):
     original_buildings = []
 
     # for i, sr in enumerate(shape_records, start=1):
-    for id_oggetto, sr in enumerate(shape_records, start=1):
+    for id_oggetto, sr in enumerate(tqdm(shape_records, desc="Processing footprints"), start=1):
         shp = sr.shape
         rec = dict(zip(field_names, sr.record))
 
@@ -207,7 +213,7 @@ def footprint_preprocess(fname):
                 )
 
                 if np.count_nonzero(inside) == len(inside):
-                    if len(poly_i) > 2:
+                    if len(poly_i) > 2 and polyarea(poly_i[:, 0], poly_i[:, 1]) < hole_thr:
                         lab_int.append(ring_idx)
                 else:
                     if np.count_nonzero(~inside) == len(inside):

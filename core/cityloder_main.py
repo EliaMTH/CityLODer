@@ -42,12 +42,16 @@ def run_cityloder_pipeline(
     os.makedirs(temp_fold, exist_ok=True)
 
     # Read LAS / point cloud
+    print("Reading las ... ", end="")
     load_start = time.perf_counter()
     xyz_building, xyz_ground, coords = read_las_file(
         las_path,
         class_building,
         class_ground,
     )
+    print("Done!")
+
+
     load_end = time.perf_counter()
     load_duration = load_end - load_start
 
@@ -72,13 +76,14 @@ def run_cityloder_pipeline(
         final_check_adj,
     )
 
-
+    print("Generating ground... ", end="")
     # Generate ground polygon
     generate_ground_polygon(
         xyz_building,
         xyz_ground,
         ground_polygon_name,
     )
+    print("Done!")
 
     buildings_extraction_end = time.perf_counter()
     buildings_extraction_duration = buildings_extraction_end - buildings_extraction_start

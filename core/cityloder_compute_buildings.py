@@ -1,8 +1,10 @@
 import os
 import numpy as np
 import shapefile
+
 from matplotlib.path import Path  # for inpolygon equivalent
 from scipy.spatial import cKDTree
+from tqdm import tqdm
 
 
 ## -------------------------------------------------------------------------------
@@ -331,7 +333,7 @@ def main(temp_fold, xyz, other, M, final_id, final_check_adj):
 
     buildings_outside_pc = 0
 
-    for i in range(0, len(M)):
+    for i in tqdm(range(0, len(M)), desc="Processing Buildings"):
 
         # Computing other_aus, control, X, Y, xy, zMin, building
         other_aus,X,Y,building = PointSelectionAndDataStructure(xyz,M[i],other)

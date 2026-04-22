@@ -153,5 +153,3 @@ def generate_ground_polygon(xyz,other,outname = "ground_polygon"):
         # face
         indices = " ".join(str(i) for i in range(len(xy)))
         f.write(f"{len(xy)} {indices}\n")
-
-    print("Saved boundary polygon:", outpath)
