@@ -1,4 +1,5 @@
 mesh_gen/build
 mesh_gen/.qtcreator
 data
+plots
 *.DS_Store

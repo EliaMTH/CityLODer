@@ -137,7 +137,7 @@ void Ground::compute()
 
 void Ground::translate_back()
 {
-    vec3d c = scene_center - ground_mesh.centroid();
+    vec3d c = scene_center /*- ground_mesh.centroid()*/;
     ground_mesh.translate(c);
 }
 

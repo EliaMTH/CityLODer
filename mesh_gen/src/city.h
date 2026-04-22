@@ -77,7 +77,7 @@ public:
 
 void City::translate_back()
 {
-    vec3d c = scene_center - city_mesh.centroid();
+    vec3d c = scene_center /*- city_mesh.centroid()*/;
     city_mesh.translate(c);
     buildings_mesh.translate(c);
     boundary.translate(c);
@@ -201,6 +201,9 @@ void City::save(const string &dir_path)
     string edge_labels_filename = dir_path + "/edges_streets_IDs.csv";
 
     translate_back();
+
+    buildings_mesh.poly_color_wrt_label();
+    city_mesh.poly_color_wrt_label();
 
     city_mesh.save(city_filename.c_str());
     buildings_mesh.save(buildings_filename.c_str());
