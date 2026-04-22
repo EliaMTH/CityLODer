@@ -1,5 +1,5 @@
 import laspy
-from scipy.spatial import KDTree
+from scipy.spatial import cKDTree
 from scipy.spatial import ConvexHull
 import numpy as np
 
@@ -31,125 +31,118 @@ def read_las_file(file_path, class_building = 6, class_ground = 2):
     
     return xyz_building, xyz_ground, coords
 
-
-def minBoundingBox(X):
+def generate_ground_polygon(xyz, other, outname="ground_polygon", offset=50.0):
     """
-    Computation of minimal bounding box of 2D points. 
-
-    Parameters:
-        - X (np.ndarray): Nx3 list of points
-    
-    Returns:
-        - bb (np.ndarray): 2×4 array of bounding box corners
+    Build a fast 2D convex hull from the XY coordinates of `xyz` and `other`,
+    enlarge it by `offset`, assign Z from nearest XY point in `other`,
+    then export a single-face OFF polygon as `<outname>.off`.
     """
-
-    # ---- convex hull ----
-    points = X.T  
-    hull = ConvexHull(points)
-    CH = X[:, hull.vertices]   # 2 × k
-
-    # ---- angles of convex hull edges ----
-    E = np.diff(CH, axis=1)    # 2 × (k-1)
-    T = np.arctan2(E[1, :], E[0, :])
-    T = np.mod(T, np.pi/2)
-    T = np.unique(T)
-
-    # ---- construct the R matrix
-    A = np.tile(T, (2, 2)) 
-    A = np.reshape(A, (2*len(T), 2), order='F')
-
-    B = np.array([[0, -np.pi], [np.pi, 0]]) / 2
-    B = np.tile(B, (len(T), 1))
-
-    R = np.cos(A + B)  
-
-    # ---- rotate convex hull CH using all angles ----
-    RCH = R @ CH 
-    RCH = RCH
-
-    # ---- compute bounding sizes for each rotation ----
-    bsize = np.max(RCH, axis=1) - np.min(RCH, axis=1)  
-    bsize = bsize.reshape(2, -1, order='F')            
-    area = np.prod(bsize, axis=0)                  
-
-    # ---- find minimal area ----
-    i = np.argmin(area)
-
-    # ---- compute bounding box in rotated frame ----
-    row1 = 2*i - 2 
-    row2 = 2*i - 1
-    Rf = np.vstack((R[row1, :], R[row2, :]))     
-
-    bound = Rf @ CH
-    bmin = np.min(bound, axis=1)
-    bmax = np.max(bound, axis=1)
-
-    Rf = Rf.T
-
-    bb = np.zeros((2, 4))
-
-    bb[:, 3] = bmax[0] * Rf[:, 0] + bmin[1] * Rf[:, 1]
-    bb[:, 0] = bmin[0] * Rf[:, 0] + bmin[1] * Rf[:, 1]
-    bb[:, 1] = bmin[0] * Rf[:, 0] + bmax[1] * Rf[:, 1]
-    bb[:, 2] = bmax[0] * Rf[:, 0] + bmax[1] * Rf[:, 1]
-
-    return bb
-
-
-def generate_ground_polygon(xyz,other,outname = "ground_polygon"):
-    
-    # Compute min bounding box on (other; xyz)
+    xyz = np.asarray(xyz, dtype=np.float64)
+    other = np.asarray(other, dtype=np.float64)
     aus = np.vstack((other, xyz))
-    mBB = minBoundingBox(aus[:, :2].T)      
 
-    xy = np.hstack((mBB.T, np.zeros((mBB.shape[1], 1))))
+    pts2d = aus[:, :2]
 
-    xy = np.zeros((mBB.shape[1], 3))
-    xy[:, :2] = mBB.T
+    # Remove exact duplicate XY points first: often a large speed win
+    pts2d = np.unique(pts2d, axis=0)
 
-    
-    # Add small space around BB  (T = 100)
-    T = 200
-    xy[0, 0] += T;   xy[0, 1] -= T
-    xy[1, 0] -= T;   xy[1, 1] -= T
-    xy[2, 0] -= T;   xy[2, 1] += T
-    xy[3, 0] += T;   xy[3, 1] += T
+    # -------------------
+    # Fast 2D convex hull
+    # -------------------
+    pts2d = np.asarray(pts2d, dtype=float)
 
-    
-    # REFINE BOUNDARY (XY)
-    xy_res = 15
-    xy_aus = np.vstack((xy, xy[0]))   # append first point to close
+    hull2d = pts2d[ConvexHull(pts2d).vertices]
 
-    pp_list = []
-    for j in range(4):
-        x_row = np.linspace(xy_aus[j,0], xy_aus[j+1,0], xy_res+1)
-        y_row = np.linspace(xy_aus[j,1], xy_aus[j+1,1], xy_res+1)
-        pts = np.column_stack((x_row[:-1], y_row[:-1]))
-        pp_list.append(pts)
+    # Ensure CCW orientation
+    def signed_area(poly):
+        x = poly[:, 0]
+        y = poly[:, 1]
+        return 0.5 * np.sum(x * np.roll(y, -1) - y * np.roll(x, -1))
 
-    xy = np.vstack(pp_list)
+    if len(hull2d) >= 3 and signed_area(hull2d) < 0:
+        hull2d = hull2d[::-1]
 
-    
-    # Project on ground points "other"
-    tree = KDTree(other[:, :2])
-    _, idx = tree.query(xy[:, :2])
-    xy = np.column_stack((xy, other[idx, 2]))
+    # ----------------------------------------
+    # Exact convex polygon outward XY offset
+    # ----------------------------------------
+    def line_intersection(p1, d1, p2, d2):
+        # Solve p1 + t*d1 = p2 + s*d2
+        denom = d1[0] * d2[1] - d1[1] * d2[0]
+        if abs(denom) < 1e-12:
+            # Nearly parallel: fallback to average of shifted vertices
+            return 0.5 * (p1 + p2)
+        diff = p2 - p1
+        t = (diff[0] * d2[1] - diff[1] * d2[0]) / denom
+        return p1 + t * d1
 
-    # Reverse 
-    xy = xy[::-1, :]
+    def offset_convex_polygon(poly, dist):
+        n = len(poly)
+        if dist == 0 or n < 3:
+            return poly.copy()
 
-    
-    # SAVE OFF FILE
-    outpath = outname if outname.endswith(".off") else outname + ".off"
+        out = np.empty_like(poly)
 
-    with open(outpath, "w") as f:
+        for i in range(n):
+            p_prev = poly[i - 1]
+            p_curr = poly[i]
+            p_next = poly[(i + 1) % n]
+
+            e1 = p_curr - p_prev
+            e2 = p_next - p_curr
+
+            n1 = np.array([e1[1], -e1[0]], dtype=np.float64)
+            n2 = np.array([e2[1], -e2[0]], dtype=np.float64)
+
+            l1 = np.linalg.norm(n1)
+            l2 = np.linalg.norm(n2)
+            if l1 < 1e-12 or l2 < 1e-12:
+                out[i] = p_curr
+                continue
+
+            n1 /= l1
+            n2 /= l2
+
+            # Shift the two incident edges outward, then intersect them
+            a1 = p_prev + dist * n1
+            a2 = p_curr + dist * n1
+            b1 = p_curr + dist * n2
+            b2 = p_next + dist * n2
+
+            d1 = a2 - a1
+            d2 = b2 - b1
+
+            out[i] = line_intersection(a1, d1, b1, d2)
+
+        return out
+
+    hull2d = offset_convex_polygon(hull2d, float(offset))
+
+    # ----------------------------------------
+    # Assign Z from nearest XY point in `other`
+    # ----------------------------------------
+    tree = cKDTree(other[:, :2])
+    _, idx = tree.query(hull2d)
+    hull3d = np.column_stack((hull2d, other[idx, 2]))
+
+    # Write OFF
+    off_path = outname if outname.lower().endswith(".off") else f"{outname}.off"
+    with open(off_path, "w") as f:
         f.write("OFF\n")
-        f.write(f"{xy.shape[0]} 1 0\n")
+        f.write(f"{len(hull3d)} 1 0\n")
+        for x, y, z in hull3d:
+            f.write(f"{x:.12g} {y:.12g} {z:.12g}\n")
+        face_idx = " ".join(map(str, range(len(hull3d))))
+        f.write(f"{len(hull3d)} {face_idx}\n")
 
-        # vertices
-        for row in xy:
-            f.write(f"{row[0]:.8f} {row[1]:.8f} {row[2]:.8f}\n")
+    return hull3d
 
-        # face
-        indices = " ".join(str(i) for i in range(len(xy)))
-        f.write(f"{len(xy)} {indices}\n")
+
+
+
+
+
+
+
+if __name__ == "__main__":
+    xyz_building, xyz_ground, coords = read_las_file("matera.las", class_building = 6, class_ground = 2)
+    generate_ground_polygon(xyz_building, xyz_ground)
