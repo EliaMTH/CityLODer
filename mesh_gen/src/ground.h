@@ -39,6 +39,8 @@ public:
 
     void compute();
 
+    void verify_mesh();
+
     void save(const string &filename);
 
     Trimesh<> get_ground()            const { return ground_mesh; }
@@ -131,6 +133,67 @@ void Ground::compute()
     project_back_mesh(ground_mesh, z_map);
     ground_mesh.update_bbox();
     ground_mesh.mesh_data().filename = m.mesh_data().filename;
+}
+
+// --------------------------------------------------------------------------------------------
+
+void Ground::verify_mesh()
+{
+    double TOLL_1D = 1e-6;
+    double TOLL_2D = 1e-12;
+
+    uint non_manifold_verts = 0;
+    for (uint vid=0; vid<ground_mesh.num_verts(); ++vid) {
+        if (!ground_mesh.vert_is_manifold(vid)) {
+            non_manifold_verts++;
+            std::cout << "  non-manifold vertex ID: " << vid << " at position " << ground_mesh.vert(vid) << std::endl;
+        }
+    }
+
+    uint non_manifold_edges = 0;
+    for (uint eid=0; eid<ground_mesh.num_edges(); ++eid) {
+        if (!ground_mesh.edge_is_manifold(eid)) {
+            non_manifold_edges++;
+        }
+    }
+
+    uint small_edges = 0;
+    for (uint eid=0; eid<ground_mesh.num_edges(); ++eid) {
+        if (ground_mesh.edge_length(eid) < TOLL_1D) {
+            small_edges++;
+        }
+    }
+
+    uint small_polys = 0;
+    for (uint pid=0; pid<ground_mesh.num_polys(); ++pid) {
+        if (ground_mesh.poly_area(pid) < TOLL_2D) {
+            small_polys++;
+        }
+    }
+
+    std::vector<vec3d> verts = ground_mesh.vector_verts();
+    REMOVE_DUPLICATES_FROM_VEC(verts);
+    uint duplicate_verts = ground_mesh.num_verts() - verts.size();
+
+    std::vector<std::vector<uint>> polys = ground_mesh.vector_polys();
+    REMOVE_DUPLICATES_FROM_VEC(polys);
+    uint duplicate_polys = ground_mesh.num_polys() - polys.size();
+
+    std::string message = "Ground mesh verification: [";
+    if (non_manifold_verts > 0)
+        message += "\n  non-manifold vertices: " + std::to_string(non_manifold_verts);
+    if (non_manifold_edges > 0)
+        message += "\n  non-manifold edges: " + std::to_string(non_manifold_edges);
+    if (small_edges > 0)
+        message += "\n  small edges (< " + std::to_string(TOLL_1D) + "): " + std::to_string(small_edges);
+    if (small_polys > 0)
+        message += "\n  small polys (< " + std::to_string(TOLL_2D) + "): " + std::to_string(small_polys);
+    if (duplicate_verts > 0)
+        message += "\n  duplicate vertices: " + std::to_string(duplicate_verts);
+    if (duplicate_polys > 0)
+        message += "\n  duplicate polys: " + std::to_string(duplicate_polys);
+    message += "\n]\n";
+    std::cout << message << std::flush;
 }
 
 // --------------------------------------------------------------------------------------------

@@ -3,6 +3,7 @@
 
 #include <cinolib/meshes/meshes.h>
 #include <cinolib/merge_meshes_at_coincident_vertices.h>
+#include <cinolib/connected_components.h>
 // #include <cinolib/drawable_segment_soup.h>
 
 #include <ground.h>
@@ -45,6 +46,7 @@ public:
     void compute_buildings_mesh();
     void compute_city_mesh();
 
+    void verify_mesh(const Trimesh<> &m);
     void save(const string &dir_path);
     void write_streets_data(const string &filepath);
     // void visualize_streets(DrawableSegmentSoup &soup) const;
@@ -89,6 +91,7 @@ void City::compute_ground_mesh()
 {
     ground.setup(boundary, buildings, streets, scene_center);
     ground.compute();
+    // ground.verify_mesh();
 }
 
 // --------------------------------------------------------------------------------------------
@@ -117,6 +120,7 @@ void City::compute_buildings_mesh()
         ++count;
     }
     std::cout << std::endl;
+    // verify_mesh(buildings_mesh);
 }
 
 // --------------------------------------------------------------------------------------------
@@ -152,6 +156,77 @@ void City::compute_city_mesh()
     if (WITH_STREETS) {
         mark_streets(*ground_mesh);
     }
+    // verify_mesh(city_mesh);
+}
+
+// --------------------------------------------------------------------------------------------
+
+void City::verify_mesh(const Trimesh<> &m)
+{
+    double TOLL_1D = 1e-6;
+    double TOLL_2D = 1e-12;
+
+    uint non_manifold_verts = 0;
+    for (uint vid=0; vid<m.num_verts(); ++vid) {
+        if (!m.vert_is_manifold(vid)) {
+            non_manifold_verts++;
+            std::cout << "  non-manifold vertex ID: " << vid << " at position " << m.vert(vid) << std::endl;
+        }
+    }
+
+    uint non_manifold_edges = 0;
+    for (uint eid=0; eid<m.num_edges(); ++eid) {
+        if (!m.edge_is_manifold(eid)) {
+            non_manifold_edges++;
+            std::cout << "  non-manifold edge ID: " << eid << " between vertices " << m.edge_vert_ids(eid).front() << " and "
+                      << m.edge_vert_ids(eid).back() << std::endl;
+        }
+    }
+
+    uint small_edges = 0;
+    for (uint eid=0; eid<m.num_edges(); ++eid) {
+        if (m.edge_length(eid) < TOLL_1D) {
+            small_edges++;
+        }
+    }
+
+    uint small_polys = 0;
+    for (uint pid=0; pid<m.num_polys(); ++pid) {
+        if (m.poly_area(pid) < TOLL_2D) {
+            small_polys++;
+        }
+    }
+
+    std::vector<vec3d> verts = m.vector_verts();
+    REMOVE_DUPLICATES_FROM_VEC(verts);
+    uint duplicate_verts = m.num_verts() - verts.size();
+
+    std::vector<std::vector<uint>> polys = m.vector_polys();
+    REMOVE_DUPLICATES_FROM_VEC(polys);
+    uint duplicate_polys = m.num_polys() - polys.size();
+
+    int euler_char       = m.num_verts() - m.num_edges() + m.num_polys();
+    uint conn_components = connected_components(m);
+    uint bnd_components  = buildings.size() + 1; // building footprints + boundary
+    int holes            = (2 * conn_components - bnd_components - euler_char) / 2;
+
+    std::string message = "Mesh verification: [";
+    if (non_manifold_verts > 0)
+        message += "\n  non-manifold vertices: " + std::to_string(non_manifold_verts);
+    if (non_manifold_edges > 0)
+        message += "\n  non-manifold edges: " + std::to_string(non_manifold_edges);
+    if (small_edges > 0)
+        message += "\n  small edges (< " + std::to_string(TOLL_1D) + "): " + std::to_string(small_edges);
+    if (small_polys > 0)
+        message += "\n  small polys (< " + std::to_string(TOLL_2D) + "): " + std::to_string(small_polys);
+    if (duplicate_verts > 0)
+        message += "\n  duplicate vertices: " + std::to_string(duplicate_verts);
+    if (duplicate_polys > 0)
+        message += "\n  duplicate polys: " + std::to_string(duplicate_polys);
+    if (holes != 0)
+        message += "\n  holes: " + std::to_string(holes);
+    message += "\n]\n";
+    std::cout << message << std::flush;
 }
 
 // --------------------------------------------------------------------------------------------
