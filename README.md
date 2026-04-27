@@ -43,3 +43,7 @@ If you use this work in your research, please cite it as follows:
 ## Contacts
 We appreciate any kind of feedback! Please reach us at:
 tommaso.sorgente@cnr.it, chiara.romanengo@cnr.it, elia.moscosothompson@cnr.it
+
+## TO-DO
+- add a pre-processing step to conform street data and buildings data
+- check the linux wrapper
