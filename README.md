@@ -414,8 +414,13 @@ TODO
 
 If you use CityLODer in academic work, please cite the paper above.
 
-### Comparison dataset
-If you’d like to test or compare your results with CityLODer, you can find the shareable portion of our dataset at the link below TODO.
+## Datasets
+
+A shareable subset of the comparison dataset used for CityLODer experiments is temporarily available here: [Genoa Datasets](https://cnrsc-my.sharepoint.com/:f:/g/personal/elia_moscosothompson_cnr_it/IgAk3dpy-fDUT4ywIa_g9RL-AWeGhIMRFDGabXfBhpLxNU0?e=nXscFB).
+
+This temporary link is provided to support review and reproducibility while the paper is under review. If the paper is accepted, the dataset will be deposited on Zenodo with a stable DOI and structured metadata.
+
+Please note that this dataset subset is provided for research and comparison purposes only. Check the repository license and any dataset-specific terms before redistribution or reuse.
 
 ## Contributors
 

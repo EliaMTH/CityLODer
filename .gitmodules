@@ -1,6 +1,3 @@
-[submodule "CPP1/cinolib"]
-	path = CPP1/cinolib
-	url = https://github.com/mlivesu/cinolib.git
 [submodule "mesh_gen/cinolib"]
 	path = mesh_gen/cinolib
 	url = git@github.com:mlivesu/cinolib.git
