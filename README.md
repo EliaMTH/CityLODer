@@ -459,12 +459,3 @@ Planned or ongoing work:
 
 * [ ] Preprocessing step to conform street data and building footprint data
 * [ ] Automatic classification support
-
-## License
-
-CityLODer is licensed under the **GNU General Public License v3.0**.
-
-See the [`LICENSE`](LICENSE) file for details.
-
-Third-party libraries retain their original licenses.
-
