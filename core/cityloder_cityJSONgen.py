@@ -4,8 +4,6 @@ import json
 import math
 import numpy as np
 
-from pathlib import Path
-
 # ---------------------------------------------------------------------
 # OFF PARSING
 # ---------------------------------------------------------------------
@@ -23,10 +21,11 @@ def read_off(filepath, wrap_faces=False):
     vertices = [list(map(float, lines[i].split())) for i in range(2, 2 + n_vertices)]
     faces = [list(map(int, lines[i].split()))[1:] for i in range(2 + n_vertices, 2 + n_vertices + n_faces)]
 
-    return {
-        "vertices": vertices,
-        "geometry": [faces[0]] if wrap_faces and len(faces) == 1 else ([faces] if wrap_faces else faces),
-    }
+    if wrap_faces:
+        geometry = [faces[0]] if len(faces) == 1 else [faces]
+    else:
+        geometry = faces
+    return {"vertices": vertices, "geometry": geometry}
 
 
 def merge_models(models, model_id="merged_buildings"):
@@ -76,14 +75,13 @@ def merge_models(models, model_id="merged_buildings"):
 
 def parse_building(folder):
     """Parse one building from pavement, roof, and facade OFF files."""
-    return merge_models(
-        [
-            read_off(os.path.join(folder, "pavement_polygon.off"), wrap_faces=True),
-            read_off(os.path.join(folder, "roof_polygon.off"), wrap_faces=True),
-            read_off(os.path.join(folder, "facades.off")),
-        ],
-        os.path.basename(folder),
-    )
+    pavement = read_off(os.path.join(folder, "pavement_polygon.off"), wrap_faces=True)
+    roof = read_off(os.path.join(folder, "roof_polygon.off"))
+    facades = read_off(os.path.join(folder, "facades.off"))
+    merged = merge_models([pavement, roof, facades], os.path.basename(folder))
+    merged["n_floor"] = len(pavement["geometry"])
+    merged["n_roof"] = len(roof["geometry"])
+    return merged
 
 
 def parse_building_dataset(main_folder):
@@ -199,11 +197,12 @@ def parse_street_geojson(path, default_z=0.0, road_width=2.0):
     with open(path, "r", encoding="utf-8") as f:
         gj = json.load(f)
 
-    if gj.get("type") == "FeatureCollection":
+    gj_type = gj.get("type")
+    if gj_type == "FeatureCollection":
         features = gj.get("features", [])
-    elif gj.get("type") == "Feature":
+    elif gj_type == "Feature":
         features = [gj]
-    elif gj.get("type") in ("LineString", "MultiLineString"):
+    elif gj_type in ("LineString", "MultiLineString"):
         features = [{"type": "Feature", "geometry": gj, "properties": {}}]
     else:
         raise ValueError("Expected FeatureCollection, Feature, LineString, or MultiLineString")
@@ -217,39 +216,35 @@ def parse_street_geojson(path, default_z=0.0, road_width=2.0):
             continue
 
         gtype = geometry.get("type")
+        if gtype == "LineString":
+            lines = [geometry.get("coordinates", [])]
+        elif gtype == "MultiLineString":
+            lines = geometry.get("coordinates", [])
+        else:
+            print(f"Skipping non-line feature of type '{gtype}'")
+            continue
+
         obj = {
             "id": road_id(props),
             "type": "Road",
             "lod": "1",
             "attributes": road_attributes(props),
         }
+        vertices, surfaces, offset = [], [], 0
+        for line in lines:
+            if len(line) < 2:
+                continue
+            ring = line_to_road_polygon([ensure_xyz(c, default_z) for c in line], road_width)
+            if not ring:
+                continue
+            vertices.extend(ring)
+            surfaces.append([list(range(offset, offset + len(ring)))])
+            offset += len(ring)
 
-        if gtype == "LineString":
-            coords = geometry.get("coordinates", [])
-            ring = line_to_road_polygon([ensure_xyz(c, default_z) for c in coords], road_width) if len(coords) >= 2 else None
-            if ring:
-                obj["vertices"] = ring
-                obj["surfaces"] = [[list(range(len(ring)))]]
-                streets.append(obj)
-
-        elif gtype == "MultiLineString":
-            vertices, surfaces, offset = [], [], 0
-            for line in geometry.get("coordinates", []):
-                if len(line) < 2:
-                    continue
-                ring = line_to_road_polygon([ensure_xyz(c, default_z) for c in line], road_width)
-                if not ring:
-                    continue
-                vertices.extend(ring)
-                surfaces.append([list(range(offset, offset + len(ring)))])
-                offset += len(ring)
-
-            if surfaces:
-                obj["vertices"] = vertices
-                obj["surfaces"] = surfaces
-                streets.append(obj)
-        else:
-            print(f"Skipping non-line feature of type '{gtype}'")
+        if surfaces:
+            obj["vertices"] = vertices
+            obj["surfaces"] = surfaces
+            streets.append(obj)
 
     return streets
 
@@ -257,6 +252,22 @@ def parse_street_geojson(path, default_z=0.0, road_width=2.0):
 # ---------------------------------------------------------------------
 # CITYJSON
 # ---------------------------------------------------------------------
+
+_FACE_TYPES = ("FloorSurface", "RoofSurface", "WallSurface")
+_EXCLUDE_META = {"Geometry", "X", "Y"}
+
+
+def _build_metadata(building_num, index_original, footprint_original):
+    indices = [int(i) - 1 for i in index_original[building_num - 1]]
+    first = footprint_original[indices[0]]
+    metadata = {k: [] for k in first if k not in _EXCLUDE_META}
+    for idx in indices:
+        record = footprint_original[idx]
+        for k in metadata:
+            v = record.get(k, "")
+            metadata[k].append("" if v is None else str(v))
+    return {k: ";".join(vals) for k, vals in metadata.items()}
+
 
 def create_cityjson(buildings=None, streets=None, output_file="default.city.json", scale=None, footprint_original = None, index_original=None):
     buildings = buildings or []
@@ -278,49 +289,6 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
             global_vertices.append(list(k))
         return vertex_map[k]
     
-    def build_metadata(j,index_original,footprint_original):
-        # Get the i-th entry
-        idx_entry = index_original[j-1] - 1
-
-        # Normalize to a list
-        if isinstance(idx_entry, (int, str)):
-            indices = [idx_entry]
-        else:
-            indices = list(idx_entry)
-
-        # Fields to exclude from metadata
-        exclude_fields = {"Geometry", "X", "Y"}
-
-        # Initialize output dictionary using fields from the first referenced building
-        metadata = {}
-        first_record = footprint_original[indices[0]]
-
-        for key in first_record.keys():
-            if key not in exclude_fields:
-                metadata[key] = []
-
-        # Collect values from all referenced buildings
-        for idx in indices:
-            record = footprint_original[idx]
-
-            for key in metadata.keys():
-                value = record.get(key, "")
-
-                # Convert numpy scalars/arrays safely to string
-                if value is None:
-                    value_str = ""
-                else:
-                    value_str = str(value)
-
-                metadata[key].append(value_str)
-
-        # Concatenate with semicolon
-        for key in metadata:
-            metadata[key] = ";".join(metadata[key])
-
-        return metadata
-        
-
     cityjson = {
         "type": "CityJSON",
         "version": "2.0",
@@ -334,10 +302,18 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
 
         building_num = int(re.search(r"\d+", b["id"]).group())
 
+        n_floor = b.get("n_floor", 1)
+        n_roof = b.get("n_roof", 1)
         for i, face in enumerate(b["geometry"]):
             rings = face if all(isinstance(x, list) for x in face) else [face]
             faces.append([[get_vertex_index(v, b["vertices"]) for v in ring] for ring in rings])
-            semantics.append({"type": ["FloorSurface", "RoofSurface", "WallSurface"][min(i, 2)]})
+            if i < n_floor:
+                sem_type = "FloorSurface"
+            elif i < n_floor + n_roof:
+                sem_type = "RoofSurface"
+            else:
+                sem_type = "WallSurface"
+            semantics.append({"type": sem_type})
 
         cityjson["CityObjects"][b["id"]] = {
             "type": "Building",
@@ -350,7 +326,7 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
                     "values": [list(range(len(faces)))]
                 },
             }],
-            "attributes": build_metadata(building_num, index_original, footprint_original)
+            "attributes": _build_metadata(building_num, index_original, footprint_original)
         }
 
     used_ids = set(cityjson["CityObjects"])
@@ -403,10 +379,7 @@ def create_cityjson(buildings=None, streets=None, output_file="default.city.json
 
 def main(working_folder, outname, street_geojson=None, footprint_original=None, index_original=None):
     buildings = parse_building_dataset(working_folder)
-    if  street_geojson == "":
-        streets = []
-    else:
-        streets = parse_street_geojson(street_geojson, default_z=0.0, road_width=2.0) if street_geojson else []
+    streets = parse_street_geojson(street_geojson, default_z=0.0, road_width=2.0) if street_geojson else []
     
     create_cityjson(list(buildings.values()), streets, outname, None, footprint_original, index_original)
 

@@ -3,3 +3,5 @@ mesh_gen/.qtcreator
 data
 plots
 *.DS_Store
+CLAUDE.md
+data/
