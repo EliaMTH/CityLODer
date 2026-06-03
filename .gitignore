@@ -5,3 +5,5 @@ plots
 *.DS_Store
 CLAUDE.md
 data/
+run_cityjson.py
+*city.json
