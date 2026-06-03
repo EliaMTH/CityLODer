@@ -36,8 +36,8 @@ def preprocess_graph(geojson_path, xyz_ground, out_folder):
     
 
 
-    # Load the GeoJSON structure in memory. If ".", load an empty graph
-    if geojson_path == "":
+    # Load the GeoJSON structure in memory. If "" or ".", load an empty graph
+    if not geojson_path or str(geojson_path) == ".":
         geojson = {"type": "FeatureCollection", "features": []}
         out_path = ""
         street_count = 0
