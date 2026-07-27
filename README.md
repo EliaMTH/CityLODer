@@ -398,7 +398,7 @@ CityLODer also relies on the following open-source C++ libraries:
 ## Publication
 You can find the CityLODer paper [here](https://www.sciencedirect.com/science/article/pii/S1524070326000184).
 
-DOI:
+### DOI:
 
 ```text
 (https://doi.org/10.1016/j.gmod.2026.101337)
