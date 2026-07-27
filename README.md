@@ -1,7 +1,6 @@
 # CityLODer
 
 ![License](https://img.shields.io/badge/license-GPL%20v3-blue.svg)
-![Publication](https://img.shields.io/badge/paper-GMOD_Under_Review-brightgreen.svg)
 
 **CityLODer** is an automated pipeline for generating **Level of Detail 1 (LOD1)** urban models from airborne LiDAR point clouds and building footprints. It converts raw geospatial data into high-quality 3D city models suitable for visualization, analysis, and further processing.
 
@@ -397,19 +396,28 @@ CityLODer also relies on the following open-source C++ libraries:
 
 
 ## Publication
-
-TODO
+If you use our work and/or want to mention it in yours, please cite [this paper](https://www.sciencedirect.com/science/article/pii/S1524070326000184).
 
 DOI:
 
 ```text
-TODO
+[TODO](https://doi.org/10.1016/j.gmod.2026.101337)
 ```
 
 ### BibTeX
 
 ```bibtex
-TODO
+@article{SORGENTE2026101337,
+title = {CityLODer: City models from airborne point clouds},
+journal = {Graphical Models},
+volume = {147},
+pages = {101337},
+year = {2026},
+issn = {1524-0703},
+doi = {https://doi.org/10.1016/j.gmod.2026.101337},
+url = {https://www.sciencedirect.com/science/article/pii/S1524070326000184},
+author = {Tommaso Sorgente and Elia {Moscoso Thompson} and Chiara Romanengo}
+}
 ```
 
 If you use CityLODer in academic work, please cite the paper above.
