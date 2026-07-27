@@ -396,12 +396,12 @@ CityLODer also relies on the following open-source C++ libraries:
 
 
 ## Publication
-If you use our work and/or want to mention it in yours, please cite [this paper](https://www.sciencedirect.com/science/article/pii/S1524070326000184).
+You can find the CityLODer paper [here](https://www.sciencedirect.com/science/article/pii/S1524070326000184).
 
 DOI:
 
 ```text
-[TODO](https://doi.org/10.1016/j.gmod.2026.101337)
+(https://doi.org/10.1016/j.gmod.2026.101337)
 ```
 
 ### BibTeX
