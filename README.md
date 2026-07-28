@@ -437,15 +437,12 @@ CityLODer is developed by:
 **CNR — Istituto di Matematica Applicata e Tecnologie Informatiche**
 
 * **Tommaso Sorgente**
-  Lead developer, point cloud processing pipeline
   [tommaso.sorgente@cnr.it](mailto:tommaso.sorgente@cnr.it)
 
 * **Elia Moscoso Thompson**
-  Algorithm development, mesh generation
   [elia.moscosothompson@cnr.it](mailto:elia.moscosothompson@cnr.it)
 
 * **Chiara Romanengo**
-  Project coordination, geometry processing, CityJSON generation
   [chiara.romanengo@cnr.it](mailto:chiara.romanengo@cnr.it)
 
 ## Contributing
