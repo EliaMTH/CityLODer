@@ -21,6 +21,8 @@ GRAPH_PATH="."
 CLASS_BUILDING="6"
 CLASS_GROUND="2"
 TEMP_FOLD="."
+EXTERNAL_BOUNDARY_GROUND="."
+
 
 show_usage() {
 cat <<'EOF'
@@ -80,6 +82,10 @@ while [[ $# -gt 0 ]]; do
       TEMP_FOLD="${2:-}"
       shift 2
       ;;
+    -EXTERNAL_BOUNDARY_GROUND)
+      EXTERNAL_BOUNDARY_GROUND="${2:-}"
+      shift 2
+      ;;
     *)
       echo "Error: Unknown argument: $1" >&2
       show_usage
@@ -117,6 +123,13 @@ else
   tmpfold_arg="/data/$TEMP_FOLD"
 fi
 
+if [[ "$EXTERNAL_BOUNDARY_GROUND" == "." ]]; then
+  boundary_arg="."
+else
+  boundary_arg="/data/$EXTERNAL_BOUNDARY_GROUND"
+fi
+
+
 sudo docker run --rm \
   -u "$(id -u):$(id -g)" \
   -e HOME=/tmp \
@@ -130,4 +143,5 @@ sudo docker run --rm \
   "$graph_arg" \
   "$CLASS_BUILDING" \
   "$CLASS_GROUND" \
-  "$tmpfold_arg"
+  "$tmpfold_arg" \
+  "$boundary_arg"

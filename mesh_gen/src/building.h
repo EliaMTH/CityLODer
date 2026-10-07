@@ -215,36 +215,62 @@ void Building::add_building_to_mesh(AbstractPolygonMesh<M,V,E,P> &m) const
 
 // --------------------------------------------------------------------------------------------
 
+// void Building::create_building_mesh()
+// {
+//     // store the original z-coordinates of the roof vertices
+//     std::unordered_map<uint, double> z_map;
+//     map_z_vals(roof, z_map);
+
+//     // triangulate the roof
+//     std::vector<uint> roof_holes = extract_holes(roof);
+//     Trimesh<> roof_tri = triangulate_with_holes(roof, roof_holes);
+//     if (roof_tri.num_verts() != roof.num_verts()) {
+//         std::cerr << "Building::create_building_mesh - ERROR: triangulation failed for Building "
+//                   << building_ID << ", roof has " << roof.num_verts() << " verts but the triangulated roof has "
+//                   << roof_tri.num_verts() << " verts. Check the roof mesh and its holes." << std::endl;
+//         exit(0);
+//     }
+
+//     // project back to the original z-coordinates
+//     project_back_mesh(roof_tri, z_map);
+
+//     // invert facades normals (if necessary)
+//     // for (uint pid=0; pid<facades.num_polys(); ++pid) {
+//     //     facades.poly_flip_winding_order(pid);
+//     // }
+//     // facades.update_bbox();
+
+//     // convert to trimesh
+//     Trimesh<> facades_tri = tessellate(facades);
+
+//     // merge roof and facades
+//     merge_meshes_at_coincident_vertices(roof_tri, facades_tri, building);
+//     building.mesh_data().filename = "building_" + std::to_string(building_ID);
+//     building.update_bbox();
+//     COMPUTED = true;
+// }
+
 void Building::create_building_mesh()
 {
-    // store the original z-coordinates of the roof vertices
+    // store the original z-coordinates of the footprint vertices
     std::unordered_map<uint, double> z_map;
-    map_z_vals(roof, z_map);
-
-    // triangulate the roof
-    std::vector<uint> roof_holes = extract_holes(roof);
-    Trimesh<> roof_tri = triangulate_with_holes(roof, roof_holes);
-    if (roof_tri.num_verts() != roof.num_verts()) {
+    map_z_vals(footprint, z_map);
+ 
+    // triangulate the footprint
+    std::vector<uint> footprint_holes = extract_holes(footprint);
+    Trimesh<> footprint_tri = triangulate_with_holes(footprint, footprint_holes);
+    if (footprint_tri.num_verts() != footprint.num_verts()) {
         std::cerr << "Building::create_building_mesh - ERROR: triangulation failed for Building "
-                  << building_ID << ", roof has " << roof.num_verts() << " verts but the triangulated roof has "
-                  << roof_tri.num_verts() << " verts. Check the roof mesh and its holes." << std::endl;
+                  << building_ID << ", footprint has " << footprint.num_verts() << " verts but the triangulated footprint has "
+                  << footprint_tri.num_verts() << " verts. Check the footprint mesh and its holes." << std::endl;
         exit(0);
     }
-
+ 
     // project back to the original z-coordinates
-    project_back_mesh(roof_tri, z_map);
-
-    // invert facades normals (if necessary)
-    // for (uint pid=0; pid<facades.num_polys(); ++pid) {
-    //     facades.poly_flip_winding_order(pid);
-    // }
-    // facades.update_bbox();
-
-    // convert to trimesh
-    Trimesh<> facades_tri = tessellate(facades);
-
-    // merge roof and facades
-    merge_meshes_at_coincident_vertices(roof_tri, facades_tri, building);
+    project_back_mesh(footprint_tri, z_map);
+ 
+    // compute final building mesh
+    building = Polygonmesh(footprint_tri.vector_verts(), footprint_tri.vector_polys());
     building.mesh_data().filename = "building_" + std::to_string(building_ID);
     building.update_bbox();
     COMPUTED = true;

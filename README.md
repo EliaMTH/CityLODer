@@ -94,6 +94,16 @@ Requirements:
 
 The street network is optional. To skip street processing, omit the graph parameter or use `"."`.
 
+### External Ground Boundary
+
+Supported format:
+
+* OFF polygon, generated from a 2D ESRI Shapefile with the `tools/boundary_to_off.py` tool (see [Processing with an External Ground Boundary](#processing-with-an-external-ground-boundary))
+
+By default, the ground extent is the convex hull of the point cloud, enlarged by 50 m. An external boundary lets you constrain the ground to a custom area (e.g., a municipality boundary).
+
+The external boundary is optional. To use the default ground extent, omit the boundary parameter or use `"."`.
+
 ## Usage
 
 CityLODer expects the input data to be placed inside a single folder. This folder should contain the airborne LiDAR point cloud, the building footprints, and, optionally, the street network file.
@@ -107,7 +117,8 @@ data/
 ├── footprints.shx
 ├── footprints.dbf
 ├── footprints.prj
-└── (street_network.geojson)
+├── (street_network.geojson)
+└── (ground_polygon.off)
 ````
 
 ### Windows PowerShell
@@ -130,8 +141,11 @@ data/
   -OUTPUT_FILE_NAME "mycity" `
   -GRAPH_PATH "data\street_network.geojson" `
   -CLASS_BUILDING 6 `
-  -CLASS_GROUND 2
+  -CLASS_GROUND 2 `
+  -EXTERNAL_BOUNDARY_GROUND "data\ground_polygon.off"
 ```
+
+> **Note:** `-EXTERNAL_BOUNDARY_GROUND` on Windows is **TO BE TESTED**.
 
 ### Linux/macOS Bash Wrapper
 
@@ -159,7 +173,8 @@ chmod +x wrapper_linux/cityloder
   -OUTPUT_FILE_NAME "mycity" \
   -GRAPH_PATH "data/street_network.geojson" \
   -CLASS_BUILDING 6 \
-  -CLASS_GROUND 2
+  -CLASS_GROUND 2 \
+  -EXTERNAL_BOUNDARY_GROUND "data/ground_polygon.off"
 ```
 
 
@@ -202,6 +217,8 @@ docker run --rm `
   /data/output/tmp
 ```
 
+To use an external ground boundary, append the path of the OFF polygon as a ninth argument (e.g., `/data/ground_polygon.off`). Keep it outside the output folder if your script cleans that folder before each run.
+
 
 ## Parameters
 
@@ -222,6 +239,7 @@ docker run --rm `
 | `CLASS_BUILDING`   |      `6` | LAS classification code for building points      |
 | `CLASS_GROUND`     |      `2` | LAS classification code for ground points        |
 | `TEMP_FOLD`        |      `.` | Temporary working directory                      |
+| `EXTERNAL_BOUNDARY_GROUND` | `.` | Optional ground boundary OFF polygon. Use `.` to skip |
 
 ## Output Files
 
@@ -297,6 +315,70 @@ Use this when the input LAS file uses non-standard class codes.
   -CLASS_GROUND 3
 ```
 
+### Processing with an External Ground Boundary
+
+Use this to constrain the ground to a custom area instead of the default convex hull of the point cloud.
+
+**1. Convert the boundary to OFF.** The `tools/boundary_to_off.py` tool reads a 2D boundary polygon from a shapefile and assigns to each vertex the elevation of the nearest point (in XY) of the point cloud. The tool is not part of the Docker image, so the `tools` folder is mounted explicitly:
+
+```bash
+docker run --rm \
+  -u $(id -u):$(id -g) \
+  -v "$(pwd)/data:/data" \
+  -v "$(pwd)/tools:/tools" \
+  --entrypoint python3 \
+  cityloder \
+  /tools/boundary_to_off.py \
+  /data/boundary.shp \
+  /data/point_cloud.las \
+  /data/ground_polygon.off \
+  --ground-class 2
+```
+
+On Windows PowerShell (**TO BE TESTED**), the equivalent command is:
+
+```powershell
+docker run --rm `
+  -v "$($PWD.Path)\data:/data" `
+  -v "$($PWD.Path)\tools:/tools" `
+  --entrypoint python3 `
+  cityloder `
+  /tools/boundary_to_off.py `
+  /data/boundary.shp `
+  /data/point_cloud.las `
+  /data/ground_polygon.off `
+  --ground-class 2
+```
+
+| Argument         | Default                 | Description                                                         |
+| ---------------- | ----------------------- | ------------------------------------------------------------------- |
+| `boundary`       | —                       | Boundary polygon shapefile. If it holds several polygons, the largest one is used. Holes are ignored |
+| `las`            | —                       | Point cloud used for the elevation                                  |
+| `output`         | `./ground_polygon.off`  | Output OFF polygon                                                  |
+| `--ground-class` | `2`                     | LAS class used for the elevation. Use `-1` to use all points (e.g., for a DTM) |
+
+The tool prints the maximum and mean XY distance between the boundary vertices and their nearest point: a large value means that part of the boundary lies outside the point cloud.
+
+**2. Run CityLODer with the boundary:**
+
+```bash
+./wrapper_linux/cityloder \
+  -LAS_PATH "data/point_cloud.las" \
+  -INPUT2D_PATH "data/footprints.shp" \
+  -EXTERNAL_BOUNDARY_GROUND "data/ground_polygon.off"
+```
+
+On Windows PowerShell (**TO BE TESTED**):
+
+```powershell
+.\wrapper_windows\cityloder_app.ps1 `
+  -LAS_PATH "data\point_cloud.las" `
+  -INPUT2D_PATH "data\footprints.shp" `
+  -EXTERNAL_BOUNDARY_GROUND "data\ground_polygon.off"
+```
+
+The log reports `Using external ground boundary: ...` before running mesh_gen.
+
 ## Troubleshooting
 
 ### Docker Image Not Found
@@ -361,6 +443,14 @@ For example, if buildings are classified as class `7`, use:
 Check that the LAS file contains ground-classified points and that the ground classification code is correct.
 
 The default ground class is `2`.
+
+### External Ground Boundary Not Found
+
+The boundary path is resolved inside the Docker container. With the wrappers, it must be relative to the current folder; with a direct Docker command, it must point inside the mounted `/data` folder.
+
+### Wrong Ground Elevation Along the Boundary
+
+Check that the boundary shapefile and the point cloud use the same coordinate reference system, and that the boundary lies inside the point cloud. Boundary vertices far from the point cloud take the elevation of the nearest point, which may be far away.
 
 ## Local Development and Dependencies
 

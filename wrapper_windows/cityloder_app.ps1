@@ -10,13 +10,14 @@ param(
     [string]$GRAPH_PATH = ".",
     [string]$CLASS_BUILDING = "6",
     [string]$CLASS_GROUND = "2",
-    [string]$TEMP_FOLD = "."
+    [string]$TEMP_FOLD = ".",
+    [string]$EXTERNAL_BOUNDARY_GROUND = "."
 )
 
 function Show-Usage {
 @"
 Usage:
-  .\cityloder_app.ps1 -LAS_PATH <file> -INPUT2D_PATH <file> [-OUTPUT_FILE_PATH <path>] [-OUTPUT_FILE_NAME <name>] [-GRAPH_PATH <path>] [-CLASS_BUILDING <int>] [-CLASS_GROUND <int>] [-TEMP_FOLD <path>]
+  .\cityloder_app.ps1 -LAS_PATH <file> -INPUT2D_PATH <file> [-OUTPUT_FILE_PATH <path>] [-OUTPUT_FILE_NAME <name>] [-GRAPH_PATH <path>] [-CLASS_BUILDING <int>] [-CLASS_GROUND <int>] [-TEMP_FOLD <path>] [-EXTERNAL_BOUNDARY_GROUND <file>]
 
 Warning 1: LAS_PATH, INPUT2D_PATH, OUTPUT_FILE_PATH, and GRAPH_PATH are assumed to be relative to the current folder.
 Warning 2: The docker image is assumed to be called "cityloder". Change the line accordingly if you used another name.
@@ -30,6 +31,7 @@ Arguments:
   CLASS_BUILDING    Optional. Default: 6
   CLASS_GROUND      Optional. Default: 2
   TEMP_FOLD         Optional. Default: (inside container)
+  EXTERNAL_BOUNDARY_GROUND  Optional. Ground polygon OFF file. Default: .
 "@
 }
 
@@ -51,6 +53,7 @@ $input2dArg = "/data/$INPUT2D_PATH"
 $outputArg  = "/data/$OUTPUT_FILE_PATH"
 $graphArg   = if ($GRAPH_PATH -eq ".") { "." } else { "/data/$GRAPH_PATH" }
 $tmpfoldArg = if ($TEMP_FOLD -eq ".") { "." } else { "/data/$TEMP_FOLD" }
+$boundaryArg = if ($EXTERNAL_BOUNDARY_GROUND -eq ".") { "." } else { "/data/$EXTERNAL_BOUNDARY_GROUND" }
 
 docker run --rm `
   -v "${currentDir}:/data" `
@@ -62,4 +65,5 @@ docker run --rm `
   "$graphArg" `
   "$CLASS_BUILDING" `
   "$CLASS_GROUND" `
-  "$tmpfoldArg"
+  "$tmpfoldArg" `
+  "$boundaryArg"
